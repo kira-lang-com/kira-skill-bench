@@ -1,0 +1,14 @@
+{
+  "name": "kira-skill-bench",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "bun run src/cli.ts benchmark",
+    "iterate": "bun run src/cli.ts iterate",
+    "appserver:bench": "bun run src/cli.ts benchmark --agent-command \"bun run adapters/codex-app-server.ts\"",
+    "appserver:iterate": "bun run src/cli.ts iterate --agent-command \"bun run adapters/codex-app-server.ts\"",
+    "fixture:bench": "bun run src/cli.ts benchmark --fixture-agent",
+    "fixture:iterate": "bun run src/cli.ts iterate --fixture-agent",
+    "test": "bun test"
+  }
+}

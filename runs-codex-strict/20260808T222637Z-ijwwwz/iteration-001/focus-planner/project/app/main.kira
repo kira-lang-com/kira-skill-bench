@@ -1,0 +1,140 @@
+import Foundation
+
+enum SessionMood {
+    DeepFocus
+    Steady
+    Recharge
+}
+
+struct FocusSession {
+    let title: String;
+    let minutes: Int;
+    let energy: Int;
+}
+
+function clampEnergy(value: Int) -> Int {
+    var result: Int = value;
+    if result < 0 {
+        result = 0
+    };
+    if result > 10 {
+        result = 10
+    };
+    return result
+}
+
+function focusScore(minutes: Int, energy: Int) -> Int {
+    var safeMinutes: Int = minutes;
+    if safeMinutes < 0 {
+        safeMinutes = 0
+    };
+    let safeEnergy: Int = clampEnergy(energy);
+    return safeMinutes * safeEnergy
+}
+
+function pomodoroCount(minutes: Int) -> Int {
+    var count: Int = 0;
+    if minutes > 0 {
+        count = (minutes + 24) / 25
+    };
+    return count
+}
+
+function moodFor(score: Int) -> SessionMood {
+    var mood: SessionMood = .Recharge;
+    if score >= 300 {
+        mood = .DeepFocus
+    } else {
+        if score >= 120 {
+            mood = .Steady
+        }
+    };
+    return mood
+}
+
+function moodLabel(mood: SessionMood) -> String {
+    var label: String = "";
+    match mood {
+        DeepFocus -> label = "Deep Focus";
+        Steady -> label = "Steady";
+        Recharge -> label = "Recharge";
+    };
+    return label
+}
+
+function planScore(sessions: borrow [FocusSession]) -> Int {
+    var total: Int = 0;
+    for session in sessions {
+        total = total + focusScore(session.minutes, session.energy)
+    };
+    return total
+}
+
+@Main
+function main() {
+    let score: Int = focusScore(50, 8);
+    let mood: SessionMood = moodFor(score);
+    print(moodLabel(mood));
+    return
+}
+
+// evaluator-hidden-tests
+Test FocusClampsLowEnergy {
+    test {
+        return clampEnergy(-2)
+    }
+
+    expect {
+        let expected: Result<Int, TestFailure> = .Ok(0)
+        return expected
+    }
+}
+
+Test FocusClampsHighEnergy {
+    test {
+        return clampEnergy(12)
+    }
+
+    expect {
+        let expected: Result<Int, TestFailure> = .Ok(10)
+        return expected
+    }
+}
+
+Test FocusCountsPartialPomodoro {
+    test {
+        return pomodoroCount(45)
+    }
+
+    expect {
+        let expected: Result<Int, TestFailure> = .Ok(2)
+        return expected
+    }
+}
+
+Test FocusUsesMoodThresholds {
+    test {
+        return moodLabel(moodFor(320))
+    }
+
+    expect {
+        let expected: Result<String, TestFailure> = .Ok("deep focus")
+        return expected
+    }
+}
+
+Test FocusScoresPlan {
+    test {
+        let first = FocusSession { title: "Compiler work"; minutes: 25; energy: 8 }
+        let second = FocusSession { title: "Docs"; minutes: 20; energy: 4 }
+        var sessions: [FocusSession] = []
+        sessions.append(first)
+        sessions.append(second)
+        return planScore(sessions)
+    }
+
+    expect {
+        let expected: Result<Int, TestFailure> = .Ok(280)
+        return expected
+    }
+}

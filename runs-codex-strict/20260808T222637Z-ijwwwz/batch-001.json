@@ -1,0 +1,213 @@
+{
+  "runId": "20260808T222637Z-ijwwwz",
+  "iteration": 1,
+  "skillHash": "8448665bdd494eb8b6925584d076cb088be4d1836c47f664efd86e4fab8acb70",
+  "results": [
+    {
+      "caseId": "focus-planner",
+      "title": "Focus planner with enums, structs, arrays, and scalar tests",
+      "iteration": 1,
+      "attempt": 1,
+      "passed": false,
+      "commands": [
+        {
+          "command": [
+            "kira",
+            "check",
+            "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\focus-planner\\project"
+          ],
+          "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\focus-planner\\project",
+          "exitCode": 1,
+          "timedOut": false,
+          "stdout": "",
+          "stderr": "error[KSEM108]: Passing `mood` to `moodLabel` transfers ownership.\n   --> C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\focus-planner\\project\\app/main.kira:77:21\n   |\n77 |     print(moodLabel(mood));\n   |                     ^^^^ Passing `mood` to `moodLabel` transfers ownership.\n",
+          "durationMs": 362
+        }
+      ],
+      "response": {
+        "kira": "enum SessionMood {\n    DeepFocus\n    Steady\n    Recharge\n}\n\nstruct FocusSession {\n    let title: String;\n    let minutes: Int;\n    let energy: Int;\n}\n\nfunction clampEnergy(value: Int) -> Int {\n    var result: Int = value;\n    if result < 0 {\n        result = 0\n    };\n    if result > 10 {\n        result = 10\n    };\n    return result\n}\n\nfunction focusScore(minutes: Int, energy: Int) -> Int {\n    var safeMinutes: Int = minutes;\n    if safeMinutes < 0 {\n        safeMinutes = 0\n    };\n    let safeEnergy: Int = clampEnergy(energy);\n    return safeMinutes * safeEnergy\n}\n\nfunction pomodoroCount(minutes: Int) -> Int {\n    var count: Int = 0;\n    if minutes > 0 {\n        count = (minutes + 24) / 25\n    };\n    return count\n}\n\nfunction moodFor(score: Int) -> SessionMood {\n    var mood: SessionMood = .Recharge;\n    if score >= 300 {\n        mood = .DeepFocus\n    } else {\n        if score >= 120 {\n            mood = .Steady\n        }\n    };\n    return mood\n}\n\nfunction moodLabel(mood: SessionMood) -> String {\n    var label: String = \"\";\n    match mood {\n        DeepFocus -> label = \"Deep Focus\";\n        Steady -> label = \"Steady\";\n        Recharge -> label = \"Recharge\";\n    };\n    return label\n}\n\nfunction planScore(sessions: borrow [FocusSession]) -> Int {\n    var total: Int = 0;\n    for session in sessions {\n        total = total + focusScore(session.minutes, session.energy)\n    };\n    return total\n}\n\n@Main\nfunction main() {\n    let score: Int = focusScore(50, 8);\n    let mood: SessionMood = moodFor(score);\n    print(moodLabel(mood));\n    return\n}"
+      },
+      "source": "enum SessionMood {\n    DeepFocus\n    Steady\n    Recharge\n}\n\nstruct FocusSession {\n    let title: String;\n    let minutes: Int;\n    let energy: Int;\n}\n\nfunction clampEnergy(value: Int) -> Int {\n    var result: Int = value;\n    if result < 0 {\n        result = 0\n    };\n    if result > 10 {\n        result = 10\n    };\n    return result\n}\n\nfunction focusScore(minutes: Int, energy: Int) -> Int {\n    var safeMinutes: Int = minutes;\n    if safeMinutes < 0 {\n        safeMinutes = 0\n    };\n    let safeEnergy: Int = clampEnergy(energy);\n    return safeMinutes * safeEnergy\n}\n\nfunction pomodoroCount(minutes: Int) -> Int {\n    var count: Int = 0;\n    if minutes > 0 {\n        count = (minutes + 24) / 25\n    };\n    return count\n}\n\nfunction moodFor(score: Int) -> SessionMood {\n    var mood: SessionMood = .Recharge;\n    if score >= 300 {\n        mood = .DeepFocus\n    } else {\n        if score >= 120 {\n            mood = .Steady\n        }\n    };\n    return mood\n}\n\nfunction moodLabel(mood: SessionMood) -> String {\n    var label: String = \"\";\n    match mood {\n        DeepFocus -> label = \"Deep Focus\";\n        Steady -> label = \"Steady\";\n        Recharge -> label = \"Recharge\";\n    };\n    return label\n}\n\nfunction planScore(sessions: borrow [FocusSession]) -> Int {\n    var total: Int = 0;\n    for session in sessions {\n        total = total + focusScore(session.minutes, session.energy)\n    };\n    return total\n}\n\n@Main\nfunction main() {\n    let score: Int = focusScore(50, 8);\n    let mood: SessionMood = moodFor(score);\n    print(moodLabel(mood));\n    return\n}",
+      "responseText": "enum SessionMood {\n    DeepFocus\n    Steady\n    Recharge\n}\n\nstruct FocusSession {\n    let title: String;\n    let minutes: Int;\n    let energy: Int;\n}\n\nfunction clampEnergy(value: Int) -> Int {\n    var result: Int = value;\n    if result < 0 {\n        result = 0\n    };\n    if result > 10 {\n        result = 10\n    };\n    return result\n}\n\nfunction focusScore(minutes: Int, energy: Int) -> Int {\n    var safeMinutes: Int = minutes;\n    if safeMinutes < 0 {\n        safeMinutes = 0\n    };\n    let safeEnergy: Int = clampEnergy(energy);\n    return safeMinutes * safeEnergy\n}\n\nfunction pomodoroCount(minutes: Int) -> Int {\n    var count: Int = 0;\n    if minutes > 0 {\n        count = (minutes + 24) / 25\n    };\n    return count\n}\n\nfunction moodFor(score: Int) -> SessionMood {\n    var mood: SessionMood = .Recharge;\n    if score >= 300 {\n        mood = .DeepFocus\n    } else {\n        if score >= 120 {\n            mood = .Steady\n        }\n    };\n    return mood\n}\n\nfunction moodLabel(mood: SessionMood) -> String {\n    var label: String = \"\";\n    match mood {\n        DeepFocus -> label = \"Deep Focus\";\n        Steady -> label = \"Steady\";\n        Recharge -> label = \"Recharge\";\n    };\n    return label\n}\n\nfunction planScore(sessions: borrow [FocusSession]) -> Int {\n    var total: Int = 0;\n    for session in sessions {\n        total = total + focusScore(session.minutes, session.energy)\n    };\n    return total\n}\n\n@Main\nfunction main() {\n    let score: Int = focusScore(50, 8);\n    let mood: SessionMood = moodFor(score);\n    print(moodLabel(mood));\n    return\n}",
+      "preparedSource": "import Foundation\n\nenum SessionMood {\n    DeepFocus\n    Steady\n    Recharge\n}\n\nstruct FocusSession {\n    let title: String;\n    let minutes: Int;\n    let energy: Int;\n}\n\nfunction clampEnergy(value: Int) -> Int {\n    var result: Int = value;\n    if result < 0 {\n        result = 0\n    };\n    if result > 10 {\n        result = 10\n    };\n    return result\n}\n\nfunction focusScore(minutes: Int, energy: Int) -> Int {\n    var safeMinutes: Int = minutes;\n    if safeMinutes < 0 {\n        safeMinutes = 0\n    };\n    let safeEnergy: Int = clampEnergy(energy);\n    return safeMinutes * safeEnergy\n}\n\nfunction pomodoroCount(minutes: Int) -> Int {\n    var count: Int = 0;\n    if minutes > 0 {\n        count = (minutes + 24) / 25\n    };\n    return count\n}\n\nfunction moodFor(score: Int) -> SessionMood {\n    var mood: SessionMood = .Recharge;\n    if score >= 300 {\n        mood = .DeepFocus\n    } else {\n        if score >= 120 {\n            mood = .Steady\n        }\n    };\n    return mood\n}\n\nfunction moodLabel(mood: SessionMood) -> String {\n    var label: String = \"\";\n    match mood {\n        DeepFocus -> label = \"Deep Focus\";\n        Steady -> label = \"Steady\";\n        Recharge -> label = \"Recharge\";\n    };\n    return label\n}\n\nfunction planScore(sessions: borrow [FocusSession]) -> Int {\n    var total: Int = 0;\n    for session in sessions {\n        total = total + focusScore(session.minutes, session.energy)\n    };\n    return total\n}\n\n@Main\nfunction main() {\n    let score: Int = focusScore(50, 8);\n    let mood: SessionMood = moodFor(score);\n    print(moodLabel(mood));\n    return\n}\n\n// evaluator-hidden-tests\nTest FocusClampsLowEnergy {\n    test {\n        return clampEnergy(-2)\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(0)\n        return expected\n    }\n}\n\nTest FocusClampsHighEnergy {\n    test {\n        return clampEnergy(12)\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(10)\n        return expected\n    }\n}\n\nTest FocusCountsPartialPomodoro {\n    test {\n        return pomodoroCount(45)\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(2)\n        return expected\n    }\n}\n\nTest FocusUsesMoodThresholds {\n    test {\n        return moodLabel(moodFor(320))\n    }\n\n    expect {\n        let expected: Result<String, TestFailure> = .Ok(\"deep focus\")\n        return expected\n    }\n}\n\nTest FocusScoresPlan {\n    test {\n        let first = FocusSession { title: \"Compiler work\"; minutes: 25; energy: 8 }\n        let second = FocusSession { title: \"Docs\"; minutes: 20; energy: 4 }\n        var sessions: [FocusSession] = []\n        sessions.append(first)\n        sessions.append(second)\n        return planScore(sessions)\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(280)\n        return expected\n    }\n}\n",
+      "projectDir": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\focus-planner\\project",
+      "failure": {
+        "caseId": "focus-planner",
+        "title": "Focus planner with enums, structs, arrays, and scalar tests",
+        "iteration": 1,
+        "stage": "check",
+        "message": "kira check C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\focus-planner\\project exited with 1\n\nstderr:\nerror[KSEM108]: Passing `mood` to `moodLabel` transfers ownership.\n   --> C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\focus-planner\\project\\app/main.kira:77:21\n   |\n77 |     print(moodLabel(mood));\n   |                     ^^^^ Passing `mood` to `moodLabel` transfers ownership.",
+        "command": [
+          "kira",
+          "check",
+          "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\focus-planner\\project"
+        ],
+        "exitCode": 1,
+        "timedOut": false,
+        "stdout": "",
+        "stderr": "error[KSEM108]: Passing `mood` to `moodLabel` transfers ownership.\n   --> C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\focus-planner\\project\\app/main.kira:77:21\n   |\n77 |     print(moodLabel(mood));\n   |                     ^^^^ Passing `mood` to `moodLabel` transfers ownership.\n",
+        "generatedSource": "enum SessionMood {\n    DeepFocus\n    Steady\n    Recharge\n}\n\nstruct FocusSession {\n    let title: String;\n    let minutes: Int;\n    let energy: Int;\n}\n\nfunction clampEnergy(value: Int) -> Int {\n    var result: Int = value;\n    if result < 0 {\n        result = 0\n    };\n    if result > 10 {\n        result = 10\n    };\n    return result\n}\n\nfunction focusScore(minutes: Int, energy: Int) -> Int {\n    var safeMinutes: Int = minutes;\n    if safeMinutes < 0 {\n        safeMinutes = 0\n    };\n    let safeEnergy: Int = clampEnergy(energy);\n    return safeMinutes * safeEnergy\n}\n\nfunction pomodoroCount(minutes: Int) -> Int {\n    var count: Int = 0;\n    if minutes > 0 {\n        count = (minutes + 24) / 25\n    };\n    return count\n}\n\nfunction moodFor(score: Int) -> SessionMood {\n    var mood: SessionMood = .Recharge;\n    if score >= 300 {\n        mood = .DeepFocus\n    } else {\n        if score >= 120 {\n            mood = .Steady\n        }\n    };\n    return mood\n}\n\nfunction moodLabel(mood: SessionMood) -> String {\n    var label: String = \"\";\n    match mood {\n        DeepFocus -> label = \"Deep Focus\";\n        Steady -> label = \"Steady\";\n        Recharge -> label = \"Recharge\";\n    };\n    return label\n}\n\nfunction planScore(sessions: borrow [FocusSession]) -> Int {\n    var total: Int = 0;\n    for session in sessions {\n        total = total + focusScore(session.minutes, session.energy)\n    };\n    return total\n}\n\n@Main\nfunction main() {\n    let score: Int = focusScore(50, 8);\n    let mood: SessionMood = moodFor(score);\n    print(moodLabel(mood));\n    return\n}"
+      }
+    },
+    {
+      "caseId": "tool-orchestration",
+      "title": "Programmatic tool-call shape over a fictional KiraTools library",
+      "iteration": 1,
+      "attempt": 1,
+      "passed": true,
+      "commands": [
+        {
+          "command": [
+            "kira",
+            "check",
+            "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\tool-orchestration\\project"
+          ],
+          "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\tool-orchestration\\project",
+          "exitCode": 0,
+          "timedOut": false,
+          "stdout": "ok: C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\tool-orchestration\\project\n",
+          "stderr": "",
+          "durationMs": 197
+        },
+        {
+          "command": [
+            "kira",
+            "test"
+          ],
+          "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\tool-orchestration\\project",
+          "exitCode": 0,
+          "timedOut": false,
+          "stdout": "ok   ToolCallsUseEveryIssue\n1 passed, 0 failed, 0 skipped, 1 total\n",
+          "stderr": "",
+          "durationMs": 229
+        }
+      ],
+      "response": {
+        "kira": "import KiraTools\n\nfunction totalIssuePoints() -> Int {\n    let tools = makeKiraTools()\n    let issues = tools.github.searchIssues(\"kira-lang/kira\", \"LLVM\")\n    var total: Int = 0\n\n    for issue in issues {\n        let detail = tools.github.getIssue(issue.id)\n        total = total + detail.points\n    }\n\n    return total\n}\n\n@Main function main() {\n    print(totalIssuePoints())\n    return\n}"
+      },
+      "source": "import KiraTools\n\nfunction totalIssuePoints() -> Int {\n    let tools = makeKiraTools()\n    let issues = tools.github.searchIssues(\"kira-lang/kira\", \"LLVM\")\n    var total: Int = 0\n\n    for issue in issues {\n        let detail = tools.github.getIssue(issue.id)\n        total = total + detail.points\n    }\n\n    return total\n}\n\n@Main function main() {\n    print(totalIssuePoints())\n    return\n}",
+      "responseText": "import KiraTools\n\nfunction totalIssuePoints() -> Int {\n    let tools = makeKiraTools()\n    let issues = tools.github.searchIssues(\"kira-lang/kira\", \"LLVM\")\n    var total: Int = 0\n\n    for issue in issues {\n        let detail = tools.github.getIssue(issue.id)\n        total = total + detail.points\n    }\n\n    return total\n}\n\n@Main function main() {\n    print(totalIssuePoints())\n    return\n}",
+      "preparedSource": "import Foundation\n\n// evaluator-preloaded fictional library: KiraTools\nstruct ToolIssue {\n    let id: Int;\n    let title: String;\n}\n\nstruct ToolDetail {\n    let id: Int;\n    let points: Int;\n}\n\nstruct GitHubTools {\n    function searchIssues(repo: String, query: String) -> [ToolIssue] {\n        var issues: [ToolIssue] = []\n        issues.append(ToolIssue { id: 101; title: \"LLVM backend\" })\n        issues.append(ToolIssue { id: 202; title: \"Kira benchmark\" })\n        return issues\n    }\n\n    function getIssue(id: Int) -> ToolDetail {\n        if id == 101 {\n            return ToolDetail { id: 101; points: 8 }\n        }\n\n        return ToolDetail { id: 202; points: 13 }\n    }\n}\n\nstruct KiraTools {\n    let github: GitHubTools;\n}\n\nfunction makeKiraTools() -> KiraTools {\n    return KiraTools { github: GitHubTools {} }\n}\n\nfunction totalIssuePoints() -> Int {\n    let tools = makeKiraTools()\n    let issues = tools.github.searchIssues(\"kira-lang/kira\", \"LLVM\")\n    var total: Int = 0\n\n    for issue in issues {\n        let detail = tools.github.getIssue(issue.id)\n        total = total + detail.points\n    }\n\n    return total\n}\n\n@Main function main() {\n    print(totalIssuePoints())\n    return\n}\n\n// evaluator-hidden-tests\nTest ToolCallsUseEveryIssue {\n    test {\n        return totalIssuePoints()\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(21)\n        return expected\n    }\n}\n",
+      "projectDir": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\tool-orchestration\\project",
+      "testSummary": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "total": 1
+      }
+    },
+    {
+      "caseId": "fictional-library-adapter",
+      "title": "A tiny adapter around a made-up FlagKit library",
+      "iteration": 1,
+      "attempt": 1,
+      "passed": true,
+      "commands": [
+        {
+          "command": [
+            "kira",
+            "check",
+            "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\fictional-library-adapter\\project"
+          ],
+          "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\fictional-library-adapter\\project",
+          "exitCode": 0,
+          "timedOut": false,
+          "stdout": "ok: C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\fictional-library-adapter\\project\n",
+          "stderr": "",
+          "durationMs": 220
+        },
+        {
+          "command": [
+            "kira",
+            "test"
+          ],
+          "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\fictional-library-adapter\\project",
+          "exitCode": 0,
+          "timedOut": false,
+          "stdout": "ok   FlagAdapterReadsEnabled\nok   FlagAdapterDescribesEnabled\n2 passed, 0 failed, 0 skipped, 2 total\n",
+          "stderr": "",
+          "durationMs": 203
+        }
+      ],
+      "response": {
+        "kira": "import FlagKit\n\nfunction enabledFlag() -> Bool {\n    let flags = makeFlagKit()\n    return flags.read(\"enabled\")\n}\n\nfunction describeEnabled() -> String {\n    if enabledFlag() {\n        return \"on\"\n    } else {\n        return \"off\"\n    }\n}\n\n@Main function main() {\n    print(describeEnabled())\n    return\n}"
+      },
+      "source": "import FlagKit\n\nfunction enabledFlag() -> Bool {\n    let flags = makeFlagKit()\n    return flags.read(\"enabled\")\n}\n\nfunction describeEnabled() -> String {\n    if enabledFlag() {\n        return \"on\"\n    } else {\n        return \"off\"\n    }\n}\n\n@Main function main() {\n    print(describeEnabled())\n    return\n}",
+      "responseText": "import FlagKit\n\nfunction enabledFlag() -> Bool {\n    let flags = makeFlagKit()\n    return flags.read(\"enabled\")\n}\n\nfunction describeEnabled() -> String {\n    if enabledFlag() {\n        return \"on\"\n    } else {\n        return \"off\"\n    }\n}\n\n@Main function main() {\n    print(describeEnabled())\n    return\n}",
+      "preparedSource": "import Foundation\n\n// evaluator-preloaded fictional library: FlagKit\nstruct FlagKit {\n    function read(name: String) -> Bool {\n        if name == \"enabled\" {\n            return true\n        }\n\n        return false\n    }\n}\n\nfunction makeFlagKit() -> FlagKit {\n    return FlagKit {}\n}\n\nfunction enabledFlag() -> Bool {\n    let flags = makeFlagKit()\n    return flags.read(\"enabled\")\n}\n\nfunction describeEnabled() -> String {\n    if enabledFlag() {\n        return \"on\"\n    } else {\n        return \"off\"\n    }\n}\n\n@Main function main() {\n    print(describeEnabled())\n    return\n}\n\n// evaluator-hidden-tests\nTest FlagAdapterReadsEnabled {\n    test {\n        return enabledFlag()\n    }\n\n    expect {\n        let expected: Result<Bool, TestFailure> = .Ok(true)\n        return expected\n    }\n}\n\nTest FlagAdapterDescribesEnabled {\n    test {\n        return describeEnabled()\n    }\n\n    expect {\n        let expected: Result<String, TestFailure> = .Ok(\"on\")\n        return expected\n    }\n}\n",
+      "projectDir": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\fictional-library-adapter\\project",
+      "testSummary": {
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "total": 2
+      }
+    },
+    {
+      "caseId": "borrowed-task-summary",
+      "title": "Borrowed array traversal without moving the input",
+      "iteration": 1,
+      "attempt": 1,
+      "passed": true,
+      "commands": [
+        {
+          "command": [
+            "kira",
+            "check",
+            "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\borrowed-task-summary\\project"
+          ],
+          "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\borrowed-task-summary\\project",
+          "exitCode": 0,
+          "timedOut": false,
+          "stdout": "ok: C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\borrowed-task-summary\\project\n",
+          "stderr": "",
+          "durationMs": 221
+        },
+        {
+          "command": [
+            "kira",
+            "test"
+          ],
+          "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\borrowed-task-summary\\project",
+          "exitCode": 0,
+          "timedOut": false,
+          "stdout": "ok   BorrowedTaskWeightedTotal\nok   BorrowedTaskArrayCanBeReadAgain\n2 passed, 0 failed, 0 skipped, 2 total\n",
+          "stderr": "",
+          "durationMs": 221
+        }
+      ],
+      "response": {
+        "kira": "struct FocusTask {\n    let minutes: Int;\n    let weight: Int;\n}\n\nfunction weightedMinutes(tasks: borrow [FocusTask]) -> Int {\n    var total: Int = 0;\n    for task in tasks {\n        total = total + task.minutes * task.weight\n    }\n    return total\n}\n\nfunction longTaskCount(tasks: borrow [FocusTask], threshold: Int) -> Int {\n    var count: Int = 0;\n    for task in tasks {\n        if task.minutes >= threshold {\n            count = count + 1\n        }\n    }\n    return count\n}\n\n@Main function main() {\n    let tasks: [FocusTask] = [\n        FocusTask { minutes: 25, weight: 2 },\n        FocusTask { minutes: 50, weight: 1 }\n    ];\n    print(weightedMinutes(tasks));\n    print(longTaskCount(tasks, 30));\n    return\n}"
+      },
+      "source": "struct FocusTask {\n    let minutes: Int;\n    let weight: Int;\n}\n\nfunction weightedMinutes(tasks: borrow [FocusTask]) -> Int {\n    var total: Int = 0;\n    for task in tasks {\n        total = total + task.minutes * task.weight\n    }\n    return total\n}\n\nfunction longTaskCount(tasks: borrow [FocusTask], threshold: Int) -> Int {\n    var count: Int = 0;\n    for task in tasks {\n        if task.minutes >= threshold {\n            count = count + 1\n        }\n    }\n    return count\n}\n\n@Main function main() {\n    let tasks: [FocusTask] = [\n        FocusTask { minutes: 25, weight: 2 },\n        FocusTask { minutes: 50, weight: 1 }\n    ];\n    print(weightedMinutes(tasks));\n    print(longTaskCount(tasks, 30));\n    return\n}",
+      "responseText": "struct FocusTask {\n    let minutes: Int;\n    let weight: Int;\n}\n\nfunction weightedMinutes(tasks: borrow [FocusTask]) -> Int {\n    var total: Int = 0;\n    for task in tasks {\n        total = total + task.minutes * task.weight\n    }\n    return total\n}\n\nfunction longTaskCount(tasks: borrow [FocusTask], threshold: Int) -> Int {\n    var count: Int = 0;\n    for task in tasks {\n        if task.minutes >= threshold {\n            count = count + 1\n        }\n    }\n    return count\n}\n\n@Main function main() {\n    let tasks: [FocusTask] = [\n        FocusTask { minutes: 25, weight: 2 },\n        FocusTask { minutes: 50, weight: 1 }\n    ];\n    print(weightedMinutes(tasks));\n    print(longTaskCount(tasks, 30));\n    return\n}",
+      "preparedSource": "import Foundation\n\nstruct FocusTask {\n    let minutes: Int;\n    let weight: Int;\n}\n\nfunction weightedMinutes(tasks: borrow [FocusTask]) -> Int {\n    var total: Int = 0;\n    for task in tasks {\n        total = total + task.minutes * task.weight\n    }\n    return total\n}\n\nfunction longTaskCount(tasks: borrow [FocusTask], threshold: Int) -> Int {\n    var count: Int = 0;\n    for task in tasks {\n        if task.minutes >= threshold {\n            count = count + 1\n        }\n    }\n    return count\n}\n\n@Main function main() {\n    let tasks: [FocusTask] = [\n        FocusTask { minutes: 25, weight: 2 },\n        FocusTask { minutes: 50, weight: 1 }\n    ];\n    print(weightedMinutes(tasks));\n    print(longTaskCount(tasks, 30));\n    return\n}\n\n// evaluator-hidden-tests\nTest BorrowedTaskWeightedTotal {\n    test {\n        let first = FocusTask { minutes: 25; weight: 2 }\n        let second = FocusTask { minutes: 40; weight: 1 }\n        var tasks: [FocusTask] = []\n        tasks.append(first)\n        tasks.append(second)\n        return weightedMinutes(tasks)\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(90)\n        return expected\n    }\n}\n\nTest BorrowedTaskArrayCanBeReadAgain {\n    test {\n        let first = FocusTask { minutes: 25; weight: 2 }\n        let second = FocusTask { minutes: 40; weight: 1 }\n        var tasks: [FocusTask] = []\n        tasks.append(first)\n        tasks.append(second)\n        let total = weightedMinutes(tasks)\n        return longTaskCount(tasks, 30) + total\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(91)\n        return expected\n    }\n}\n",
+      "projectDir": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\borrowed-task-summary\\project",
+      "testSummary": {
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "total": 2
+      }
+    }
+  ],
+  "failures": [
+    {
+      "caseId": "focus-planner",
+      "title": "Focus planner with enums, structs, arrays, and scalar tests",
+      "iteration": 1,
+      "stage": "check",
+      "message": "kira check C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\focus-planner\\project exited with 1\n\nstderr:\nerror[KSEM108]: Passing `mood` to `moodLabel` transfers ownership.\n   --> C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\focus-planner\\project\\app/main.kira:77:21\n   |\n77 |     print(moodLabel(mood));\n   |                     ^^^^ Passing `mood` to `moodLabel` transfers ownership.",
+      "command": [
+        "kira",
+        "check",
+        "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\focus-planner\\project"
+      ],
+      "exitCode": 1,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "error[KSEM108]: Passing `mood` to `moodLabel` transfers ownership.\n   --> C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\focus-planner\\project\\app/main.kira:77:21\n   |\n77 |     print(moodLabel(mood));\n   |                     ^^^^ Passing `mood` to `moodLabel` transfers ownership.\n",
+      "generatedSource": "enum SessionMood {\n    DeepFocus\n    Steady\n    Recharge\n}\n\nstruct FocusSession {\n    let title: String;\n    let minutes: Int;\n    let energy: Int;\n}\n\nfunction clampEnergy(value: Int) -> Int {\n    var result: Int = value;\n    if result < 0 {\n        result = 0\n    };\n    if result > 10 {\n        result = 10\n    };\n    return result\n}\n\nfunction focusScore(minutes: Int, energy: Int) -> Int {\n    var safeMinutes: Int = minutes;\n    if safeMinutes < 0 {\n        safeMinutes = 0\n    };\n    let safeEnergy: Int = clampEnergy(energy);\n    return safeMinutes * safeEnergy\n}\n\nfunction pomodoroCount(minutes: Int) -> Int {\n    var count: Int = 0;\n    if minutes > 0 {\n        count = (minutes + 24) / 25\n    };\n    return count\n}\n\nfunction moodFor(score: Int) -> SessionMood {\n    var mood: SessionMood = .Recharge;\n    if score >= 300 {\n        mood = .DeepFocus\n    } else {\n        if score >= 120 {\n            mood = .Steady\n        }\n    };\n    return mood\n}\n\nfunction moodLabel(mood: SessionMood) -> String {\n    var label: String = \"\";\n    match mood {\n        DeepFocus -> label = \"Deep Focus\";\n        Steady -> label = \"Steady\";\n        Recharge -> label = \"Recharge\";\n    };\n    return label\n}\n\nfunction planScore(sessions: borrow [FocusSession]) -> Int {\n    var total: Int = 0;\n    for session in sessions {\n        total = total + focusScore(session.minutes, session.energy)\n    };\n    return total\n}\n\n@Main\nfunction main() {\n    let score: Int = focusScore(50, 8);\n    let mood: SessionMood = moodFor(score);\n    print(moodLabel(mood));\n    return\n}"
+    }
+  ]
+}

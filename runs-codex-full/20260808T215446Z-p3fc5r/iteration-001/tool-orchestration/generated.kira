@@ -1,0 +1,16 @@
+function totalIssuePoints() -> Int {
+    let tools = makeKiraTools()
+    let issues = tools.github.searchIssues(repo: "kira-lang/kira", query: "LLVM")
+    var total = 0
+    for issue in issues {
+        let detail = tools.github.getIssue(id: issue.id)
+        total = total + detail.points
+    }
+    return total
+}
+
+@Main
+function main() {
+    print(totalIssuePoints())
+    return
+}

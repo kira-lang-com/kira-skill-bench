@@ -1,0 +1,47 @@
+{
+  "caseId": "borrowed-task-summary",
+  "title": "Borrowed array traversal without moving the input",
+  "iteration": 1,
+  "attempt": 1,
+  "passed": true,
+  "commands": [
+    {
+      "command": [
+        "kira",
+        "check",
+        "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-fixed\\20260808T221729Z-n9zkzr\\iteration-001\\borrowed-task-summary\\project"
+      ],
+      "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-fixed\\20260808T221729Z-n9zkzr\\iteration-001\\borrowed-task-summary\\project",
+      "exitCode": 0,
+      "timedOut": false,
+      "stdout": "ok: C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-fixed\\20260808T221729Z-n9zkzr\\iteration-001\\borrowed-task-summary\\project\n",
+      "stderr": "",
+      "durationMs": 226
+    },
+    {
+      "command": [
+        "kira",
+        "test"
+      ],
+      "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-fixed\\20260808T221729Z-n9zkzr\\iteration-001\\borrowed-task-summary\\project",
+      "exitCode": 0,
+      "timedOut": false,
+      "stdout": "ok   BorrowedTaskWeightedTotal\nok   BorrowedTaskArrayCanBeReadAgain\n2 passed, 0 failed, 0 skipped, 2 total\n",
+      "stderr": "",
+      "durationMs": 238
+    }
+  ],
+  "response": {
+    "kira": "struct FocusTask {\n    let minutes: Int;\n    let weight: Int;\n}\n\nfunction weightedMinutes(tasks: borrow [FocusTask]) -> Int {\n    var total: Int = 0;\n    for task in tasks {\n        total = total + task.minutes * task.weight;\n    }\n    return total;\n}\n\nfunction longTaskCount(tasks: borrow [FocusTask], threshold: Int) -> Int {\n    var count: Int = 0;\n    for task in tasks {\n        if task.minutes >= threshold {\n            count = count + 1;\n        }\n    }\n    return count;\n}\n\n@Main\nfunction main() {\n    return;\n}"
+  },
+  "source": "struct FocusTask {\n    let minutes: Int;\n    let weight: Int;\n}\n\nfunction weightedMinutes(tasks: borrow [FocusTask]) -> Int {\n    var total: Int = 0;\n    for task in tasks {\n        total = total + task.minutes * task.weight;\n    }\n    return total;\n}\n\nfunction longTaskCount(tasks: borrow [FocusTask], threshold: Int) -> Int {\n    var count: Int = 0;\n    for task in tasks {\n        if task.minutes >= threshold {\n            count = count + 1;\n        }\n    }\n    return count;\n}\n\n@Main\nfunction main() {\n    return;\n}",
+  "responseText": "struct FocusTask {\n    let minutes: Int;\n    let weight: Int;\n}\n\nfunction weightedMinutes(tasks: borrow [FocusTask]) -> Int {\n    var total: Int = 0;\n    for task in tasks {\n        total = total + task.minutes * task.weight;\n    }\n    return total;\n}\n\nfunction longTaskCount(tasks: borrow [FocusTask], threshold: Int) -> Int {\n    var count: Int = 0;\n    for task in tasks {\n        if task.minutes >= threshold {\n            count = count + 1;\n        }\n    }\n    return count;\n}\n\n@Main\nfunction main() {\n    return;\n}",
+  "preparedSource": "import Foundation\n\nstruct FocusTask {\n    let minutes: Int;\n    let weight: Int;\n}\n\nfunction weightedMinutes(tasks: borrow [FocusTask]) -> Int {\n    var total: Int = 0;\n    for task in tasks {\n        total = total + task.minutes * task.weight;\n    }\n    return total;\n}\n\nfunction longTaskCount(tasks: borrow [FocusTask], threshold: Int) -> Int {\n    var count: Int = 0;\n    for task in tasks {\n        if task.minutes >= threshold {\n            count = count + 1;\n        }\n    }\n    return count;\n}\n\n@Main\nfunction main() {\n    return;\n}\n\n// evaluator-hidden-tests\nTest BorrowedTaskWeightedTotal {\n    test {\n        let first = FocusTask { minutes: 25; weight: 2 }\n        let second = FocusTask { minutes: 40; weight: 1 }\n        var tasks: [FocusTask] = []\n        tasks.append(first)\n        tasks.append(second)\n        return weightedMinutes(tasks)\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(90)\n        return expected\n    }\n}\n\nTest BorrowedTaskArrayCanBeReadAgain {\n    test {\n        let first = FocusTask { minutes: 25; weight: 2 }\n        let second = FocusTask { minutes: 40; weight: 1 }\n        var tasks: [FocusTask] = []\n        tasks.append(first)\n        tasks.append(second)\n        let total = weightedMinutes(tasks)\n        return longTaskCount(tasks, 30) + total\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(91)\n        return expected\n    }\n}\n",
+  "projectDir": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-fixed\\20260808T221729Z-n9zkzr\\iteration-001\\borrowed-task-summary\\project",
+  "testSummary": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "total": 2
+  }
+}

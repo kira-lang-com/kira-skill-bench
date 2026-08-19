@@ -1,0 +1,17 @@
+{
+  "caseId": "focus-planner",
+  "title": "Focus planner with enums, structs, arrays, and scalar tests",
+  "iteration": 1,
+  "attempt": 1,
+  "passed": false,
+  "commands": [],
+  "failure": {
+    "caseId": "focus-planner",
+    "title": "Focus planner with enums, structs, arrays, and scalar tests",
+    "iteration": 1,
+    "stage": "agent",
+    "message": "bun run adapters/codex-exec.ts timed out after 180068ms",
+    "stdout": "",
+    "stderr": ""
+  }
+}
