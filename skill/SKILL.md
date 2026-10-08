@@ -1,168 +1,200 @@
 ---
 name: working-with-kira
-description: This skill helps you write and validate Kira code efficiently across multiple backends (VM, LLVM-native, hybrid, and wasm) by providing syntax guidance, error diagnostics, and debugging support. Use it when creating, editing, or executing Kira projects to ensure your code runs correctly and consistently regardless of the chosen backend.
+description: Write, check and run Kira code with the KLF-hosted `kira` compiler (klf-kira, installed by knvm). Use it whenever you create or edit `.kira` files, `package.kira` manifests or Kira libraries, so the code compiles on the current compiler and reads as idiomatic Kira, not C written in Kira syntax.
 ---
 
-## Parity = the law
-Same source, all backends agree: `vm`, `llvm` (native), `hybrid`, `wasm32-emscripten`. `--backend vm|llvm|hybrid` works on `run`/`build`/`check`; the default comes from `package.kira`'s `Defaults.executionMode`. **VM has no FFI** → libs using Kira Graphics / UI Foundation need `hybrid`/`llvm`. DONE = works (or rejected with a diagnostic) on every targeted backend, not one.
+# Working with Kira
 
-Project: `package.kira` + `linter.kira` + `app/main.kira` holding `@Main`. The installed CLI calls the root lint file `linter.kira`, not `lint.kira`. Use this manifest spelling exactly, with no semicolons:
+The compiler is `kira`, the Kira language defined in `.klfd` files (the klf-kira repository) and built by the Kira Language Framework. `knvm` installs it. What it accepts is listed in klf-kira's `languages/kira/docs/subset.md`. When the prose and the compiler disagree, the compiler is right: run `kira check`.
+
+Done means `kira check` is clean, and the code follows the "Write good Kira" rules below. Code that compiles but swallows errors, compares magic numbers or hand-rolls loops is not done.
+
+## Toolchain
+
+- `kira check [<path>]` reports diagnostics and writes nothing. It is fast; run it after every edit. `<path>` is a package directory, its manifest or any file in it.
+- `kira run <path> [-- args]` builds an executable and runs it. `kira build <path> -o out` builds. `-o`'s extension, or `--emit kir|klbc|bin|lib|shared|ridl|run`, chooses the output. `--target <triple>` cross-compiles, and `--release` builds a release.
+- `kira build --emit ridl -o X.ridl <library>` writes a library's RIDL contract.
+- `kira format [--check] <path>` formats in place, with a width of 100 and 4 spaces.
+- `knvm install latest` installs a release. `knvm binstall` builds and installs a klf-kira checkout as the dev toolchain, and `knvm sinstall` installs `knvm` and the launchers. The `kira` launcher runs the installed toolchain, so rerun `knvm binstall` after changing the compiler.
+- There is no `kira test`, `kira lint` or `--backend`. Tests build with `--test` (see below).
+- Diagnostics are numeric: `error[3025]`. The thousands band is the family: 1xxx lexer, 2xxx parser, 3xxx semantics, 4xxx packages, 5xxx macros. 9001 is "outside the supported subset", or a missing declaration such as no `import Foundation`.
+
+## Packages
+
+A package is a directory with `package.kira` and `app/`. Every `.kira` file under `app/`, in any subdirectory, is one module. Files see each other without imports. Never import a sibling file.
+
 ```kira
-Package app_name {
+Package Shop {
     let version = "0.1.0"
-    let kira = "0.1.0"
     let kind = PackageKind.App
-    let defaults = Defaults { executionMode: Backend.Vm, buildTarget: BuildTarget.Host }
 }
 ```
-Before returning a project, verify the field names, quoted version strings, `PackageKind.App`, `Backend.Vm`, `BuildTarget.Host`, and the colon/comma syntax in `Defaults`. For a linter, use this shape, written on separate lines:
-```kira
-import Foundation
 
-construct FileLength() extends Lint {
-    let code: String = "KLINT003"
-    let level: LintLevel = .Warn
-    let limit: Int = 700
+The typed construct form is stricter, because an unknown member is error 4003 rather than silently skipped. Prefer it when a manifest has dependencies:
+
+```kira
+construct Shop extends Package {
+    let version: String = "0.1.0"
+    let kind: PackageKind = .App
+    let dependencies: [Dependency] = [
+        Dependency { name: "Geometry", path: "../geometry" }
+    ]
 }
 ```
-A lint override is a construct-family declaration: `construct <Name>() extends Lint { … }`. Every lint ships a sensible default level, so `linter.kira` states only the few you want different — do not enumerate every lint; a package that agrees with the defaults writes no `linter.kira` at all and is still linted. `let level: LintLevel = .Warn` sets the level: `.Allow` (off — nothing is walked, costs nothing), `.Warn` (reported, build continues — the default for almost everything), `.Deny` (reported, build fails). Disable a lint with `level: .Allow`.
 
-## Canonical Kira spelling
-Kira does not use semicolon characters. Never emit `;` in source, manifests, linter files, or project output. Separate fields, declarations, statements, and match arms with newlines; use commas only where the grammar explicitly requires them, such as the `Defaults` fields above. Do not copy semicolon-heavy examples from other languages.
+- The members are `kind` (`.App` or `.Library`), `version`, `moduleRoot`, `dependencies` and `nativeLibraries`. `kira`, `defaults`, `packages` and `allowThinFfiShim` are accepted and ignored. Do not rely on `Defaults { executionMode: ... }`.
+- Only `path` dependencies resolve.
+- An app has exactly one `@Main function main()`, with no parameters. A library has none.
+- `import Foundation` gives `String`, `Any`, `Result`, `Optional`, `Number`, files, maths and logging. Without it there is no `String` type and no string literal. Imports are per file: each file imports what it uses.
+- `public` exports a top-level function, type, construct, trait or constant from a library. It never goes on a member.
 
-In a multi-file package, every `app/*.kira` file shares the package namespace and is compiled together. Do not import sibling files such as `app/inventory.kira` or `app/weather.kira`; call their declarations directly. A benchmark library contract marked evaluator-preloaded is already injected into that package. Do not import or redeclare that fictional library name. Import only a module that the package actually provides or declares as a dependency.
+## The language
 
-## Core syntax
-- `let` immutable, `var` mutable, and the type is optional (`let n: Int = 3`). Use `@Main function main() { ... return }` and `function f(a: Int) -> Int {}`.
-- Types: `Int` (64-bit signed) `Float` (64-bit) `Bool String`; width scalars `I8 I16 I32 U8 U16 U32 U64` and `F32`; `RawPtr CString CBool`. `Int` and `Float` are the 64-bit integer and float — there is no `I64` or `F64`. `Int32` aliases `I32`; `Byte` is `type Byte = U8`. No implicit widening between two written widths (`u8 + u32` = `KSEM071`); a literal adapts to the width it is written into and bare `Int` pairs with any int width. Convert with `Int(x) U64(x) F32(x)…`, range-checked (traps if the value does not fit).
-- Functions that return no value omit the return type entirely. Never invent a return type for them.
-- Annotations: `@Main @Native @Runtime @FFI.Extern @State @Printable @MainThread @MainThreadLifecycle`.
-- Methods inside struct/class body, implicit `self`: `struct Point { var x: Int function sum() -> Int { return self.x } }`. Build `Point { x: 1 }`.
-- `@Printable` means define `onPrint() -> String`. `print(v)` dispatches to it.
-- Arrays `[Any]` (element type in brackets): `var xs: [Int] = []`, `xs.append(3)`, `xs.count`, `xs[0]`, `for v in xs {}`. A `for` variable is each element, not its index or identifier; when iterating structs, pass the required field to APIs expecting a scalar (for example, `for item in items { process(item.id) }`). Struct may own array field.
-- A function named `count` should count matching elements unless the request explicitly asks for a sum. Increment with `count = count + 1` and do not add an unrelated numeric field merely because it is available.
-- Imports: `import Foundation` (bare → names in scope), `import X as Y`. Imports are **file-scoped**: each file that uses a module imports it itself, so importing Foundation (or any library) in several files of one package is correct, not an error. Top-level declaration names are globally unique across the package — redeclaring one, including a name Foundation provides, is `KSEM003`.
-- For an actual project, resolve every non-core import: a local `import X` requires the compiler to find `X.kira` at the expected path or a verified package dependency. Never invent an import or API from task prose alone.
-- A benchmark library contract explicitly marked evaluator-preloaded is the exception: its declarations are injected into the package by the evaluator. Use the declared API directly, without importing or redeclaring that library, and do not apply the unresolved-module stop to that contract.
-- Treat declaration verification as a hard precondition for using a non-core import: record the exact signature of every invoked symbol—including constructors and follow-up operations—before emitting the call. If declarations are unavailable, report the missing API information instead of deriving a call name or receiver from task prose. At every call, match the declared parameter types, ownership, and return type: pass borrowed arguments directly, preserve returned collection element types instead of imposing a guessed annotation, and project the required field when either an element or returned struct must supply a scalar. KSEM114 means remove `move` because the callee borrows the argument; KSEM063 means pass a value of the declared parameter type, projecting a struct field when necessary. Call declared methods through their receiver and declared free functions directly. KSEM097 means the receiver lacks that method; KSEM061 means no imported or local free function has that name, so inspect the declarations and use the exact declared operation instead of guessing another call shape.
+- `let` is immutable and `var` is mutable. A type annotation is optional; an initializer is required. Function declarations look like this:
+  ```kira
+  function name(label: Type) -> Result { ... }
+  ```
+  - Leave out `-> Type` for a function that returns nothing.
+  - A parameter is always `label: Type`.
+- Types:
+  - `Int` is 64-bit signed and `Float` is 64-bit.
+  - The fixed widths are `I8 I16 I32 U8 U16 U32 U64 F32`.
+  - The other built-in types are `Bool`, `Void` and `RawPtr`.
+  - Foundation adds `String`, `Any`, `[T]` and `Number`. `Number` is an exact decimal with a 65-bit mantissa and bitwise operators on whole values.
+  - Widths never mix silently. Convert with a call, such as `U32(x)` or `Int(b)`, and the conversion traps when the value does not fit. Arithmetic traps on overflow.
+- Kira has no semicolons (error 1005). Statements, fields, cases and match arms are separated by newlines.
+- Operators:
+  - Arithmetic, bitwise, comparison and `? :` work as usual.
+  - Compound assignment: `+= -= *= /=`.
+  - `i++` works.
+  - String `+` concatenates. Turn a value into text with `String(x)`.
+  - There is no `"\(x)"` interpolation.
+- `for i in 0..n` is half-open. `for item in items` binds each element, and there is no `enumerated()`. `while cond`, `while true`, `break` and `continue` all work, also inside a `match` arm.
+- `struct` has value semantics, with fields and methods. A method takes `borrow self`, the default, or `borrow mut self`. Inside a method, a bare name is a field. A struct literal is written `Point { x: 1, y: 2 }`.
+  - `class` has reference storage. Bind it with `var` to call a `borrow mut self` method.
+- `enum` cases are separated by whitespace and carry at most one payload, `Case(Type)`. Generic enums and structs are allowed, such as `Optional<Value>` with `.Some(v)` and `.None`. The `T?` shorthand is not.
+- `match` works on enums, integers and strings. It must be exhaustive, and `else ->` covers the rest. Arms name cases unqualified and bind a payload with `Case(x)`. A `match` is an expression: `return match x { ... }`.
+- A leading dot, `.Case`, works where the type is known: an annotation, a parameter, a return, a field, or the other side of `==`.
+- `trait Name { function f() -> T }`, then `struct S: Name { ... }`. A trait's bare name in a type position is its existential: `-> Greeter`.
+- `construct Family { @Required ... }` declares a construct family. A value joins it with `Family Name { ... }`.
+- `namespace Name { let member: T = value }` groups constants, read as `Name.member`. `public namespace` exports every member. A constant `let` is folded in place and costs nothing at run time.
+- `distinct Metres = Int` makes a new type. Build it with `Metres(5)` and read it back with `.raw`.
+- `type Name = Target` declares a nominal alias.
+- Ownership is affine. A non-Copy value moves on use, so pass `move v` to an owned parameter.
+  - Declare a read-only parameter as `borrow T`, and one the function writes as `borrow mut T`. The caller passes a `var` to `borrow mut`.
+  - Pass an argument straight to a `borrow` parameter.
+- `async function f(...)` runs as a task: `let h = Task { f(1, 2) }`, then `h.await`.
+  - `Channel<T>()` returns the sender. Its other end is `.receiver`, and `try rx.receive()` takes one message.
+- Lambdas are written `{ x in ... }`. They need a function type to come from somewhere: `let g: (Int) -> Int = { x in return x + 1 }`.
+- `comptime function` runs at compile time.
+  - A declarative macro is `macro name(x: expr) { expand { ... } }`.
+  - `@Derive(Equatable)` generates `eq_Name`. It does not generate `==`.
+  - `@Derive(Tagged)` numbers cases from zero in declaration order, so it is wrong for wire codes that must stay fixed.
+- `klist!("Info.klist", "Key")` reads a `.klist` value. In a release it is inlined. In a debug build it is read at run time.
+  - `ksl!("app/Shaders/X.ksl")` embeds a shader.
+  - Both paths are relative to the package root.
+- `@FFI.Extern { library: name, symbol: c_name, abi: c }` on a function with no body calls into C. The values in the block are bare words.
+  - `@FFI.Syscall { name: write }` is a Linux system call.
+  - `@FFI.Struct { layout: c }` lays a struct out as C does.
+- Raw memory, only at a hardware or OS boundary: `heapLoad<T>(p, offset)`, `heapStore<T>(p, offset, v)`, `sizeOf<T>()`, or the `Heap` library's `MemoryView` and `ByteBlock`.
 
-## Enums + match
+## Errors
+
+A fallible function returns `Result<Value, Failure>`, where `Failure` is an enum that names what went wrong.
+
 ```kira
-enum E { InvalidFormat: String = "def"   // single payload + default
-         UnexpectedEnd }                  // payload-less
-let e: E = .InvalidFormat                 // expected type supplies E
-match e { InvalidFormat(t) -> { ... } UnexpectedEnd -> { ... } }  // unqualified inside, payload bound; no semicolons between arms
-```
-`match` is exhaustive (missing/dup-arm diagnostics). `Result<Value,Failure>` is the canonical 2-variant (`.Ok(v)` or `.Error(f)` in an expected `Result` context). Do not assume fieldless enums are Copy. Follow the ordinary ownership rules when passing them.
-For a user-facing enum `label` function, honor exact labels stated by the task; if no labels are stated, preserve each variant's spelling rather than inventing spaces or case changes.
-
-## Expected-type `.member`
-Kira uses a leading-dot expression when the surrounding position supplies its expected type. Anchors include typed locals/fields/defaults, function arguments and returns, typed array elements, the other side of a comparison, and an outer enum payload.
-```kira
-let tone: Tone = .Red
-let tones: [Tone] = [.Red, .Label("hi")]
-score(.Green)
-function defaultTone() -> Tone { return .Red }
-if backend == .VM { print("vm") }
-
-let animal: Animal = .Dog()             // concrete subclass expected as Animal
-let child: some Widget = .Text()        // declaration satisfying Widget
-let tone2: Tone = .makeTone()           // compatible named function result
-apply(6, .twice)                         // compatible named callback
-```
-This is expected-type name resolution, not static members. `let x = .Red` has no anchor (or the anchor is a non-enum type) and fails with `KSEM119`; Kira adds a type (`let x: Tone = .Red`) or keeps `Tone.Red`. A leading dot naming a variant the anchored enum does not have fails with `KSEM120`. The qualified spelling remains valid.
-
-## Classes / inheritance
-`class` adds inheritance over `struct`. `class Child extends Left, Right { override let value = 11 function t() -> Int { return Left.doubled() + Right.value } }` — multi-parent, `override` field default, parent-qualified field/method access, exact-signature overrides, parity across backends.
-
-## Closures
-Closures use values such as `{ x in ... }`; trailing-callback `app.onFrame { frame in ... }` (binds as final fn arg), and zero-param `app.tick { in ... }`. For a callback that returns no value, follow the declared no-return form and omit its return type. Capture `let` by value and `var` as shared-mutable. Nested and multiple closures share by lexical scope on all backends. Non-Copy capture into an escaping closure = KSEM117 (reject).
-
-## Control flow
-`if/else`, `while`, `x ? a : b`, `break`, `continue`, and `return` are standard. In a sentinel loop, check the exit condition before mutating when the initial value may already satisfy it. No `switch`/`case`/`default` — dispatch an enum with `match`. Range `for i in start..end` is half-open Int (`0..5` → 0..4), `i` is immutable, and the range is empty if `start >= end`. Replace a manual counter loop with `for i in 0..n {}`. `..` is valid only in a for slot.
-
-## attempt / try / handle
-Linear `Result` unwrap uses the `try` keyword, not `?`, and desugars to `match` on vm/hybrid. `try` must initialize a new `let` directly inside the `attempt` body. Write `let v = try operation()` and then assign or use `v` separately. Do not place `try` in an assignment to an existing `var` or nest it in another expression.
-```kira
-attempt {
-    let v = try render()
-    print(v)
+enum LoadFailure {
+    Missing(String)
+    Corrupt
 }
-handle {
-    MissingNode(r) { print(r) }
-    InvalidState(r) { print(r) }
+
+function load(path: borrow String) -> Result<Config, LoadFailure> {
+    if !fileExists(path) { return .Error(.Missing(copy path)) }
+    ...
 }
 ```
-`try expr`: Ok → value flows on; Error → jump to matching handle (binds payload). Diagnostics: try-outside-attempt, try-on-non-Result, missing/unknown handle case, incompatible failure enums.
 
-## Ownership = Rust affine
-Non-Copy MOVES on use; use-after-move = compile error. An untagged parameter is owned/consumed, so pass an owned value explicitly as `move value` (for example, `moodLabel(move mood)`) or declare a read-only parameter as `borrow Any`. When a parameter is only inspected, traversed, or forwarded to borrowing APIs, declare it as `value: borrow Any`. Call-site ownership is determined by the callee: pass an argument directly to a `borrow` parameter even when the caller owns that value, and use `move` only when the callee's parameter is owned. Propagate borrowing through read-only helper chains: `function label(value: borrow String) -> String` may receive a borrowed argument, while forwarding that argument to an owned parameter attempts an invalid ownership transfer. If a callee owns a `String` or struct argument, do not forward a borrowed parameter to it, and do not pass the same owned value to two consuming calls. KSEM108 means the callee owns the argument. Params: `borrow Any` (read alias), `borrow mut Any` (mutable alias + writeback), untagged = owned/consumed. Prefer `borrow` on hot read paths (avoid deep copy). Invalid code must fail compile, not crash.
+You have four ways to deal with a failure. Pick one at every call.
 
-## FFI / native
+1. Pass it up with `try`, inside `attempt`/`handle` or with `otherwise return`:
+   ```kira
+   let config = try load(path) otherwise return .Error(.Corrupt)
+   ```
+2. Match it and act:
+   ```kira
+   match load(path) {
+       Ok(config) -> apply(config)
+       Error(failure) -> log warn("could not load the configuration", path, failure)
+   }
+   ```
+3. Fall back on purpose: `let n = try parse(text) otherwise 0`. This records the fallback on the trail.
+4. Let it go explicitly: `Error(failure) -> absorb failure`. Do this only when ignoring the failure is correct, and add a comment saying why.
+
+An `Error(_)` arm, or an `else` arm standing in for `Error`, is error 3394. The compiler still accepts `let _ = f()` and a bare `f()` that drops a `Result`. Never write either: each one silently swallows a failure.
+
+## Logging
+
+Logging is a statement, not a function. Do not use `print` for diagnostics, and do not write per-program wrappers such as `myLog(...)`.
+
 ```kira
-@Native function doNative(user_data: RawPtr, v: Int) -> Int {}
-@FFI.Extern {
-    library: kira_runtime
-    symbol: kira_dynamic_write_f32_at
-    abi: c
-}
-function dynWriteF32At(ptr: RawPtr, offset: U64, value: F32)
+log info("opened the volume", path, size: Int(bytes))
+log warn("could not open the volume", path, failure)
+log fault("the table is corrupt", entries)
 ```
-Native state: `nativeState(S{...})` → `nativeUserData(s)` → later `nativeRecover<S>(tok)`. Cost: `nativeRecover` materializes the whole struct each call; struct-array marshal across `@Native` = deep copy O(fields×elems), flat `[Float]`/raw buffer = cheap memcpy; closures don't survive nativeState round-trip (pass via `borrow` app). Per-element crossing is the cost — batch into one span/bulk FFI call.
 
-## async / tasks / channels
-`async function` marks a task entry point — a body spawned with `Task { … }`, not called directly (direct call = `KSEM354`; only an `async function` is a valid task target = `KSEM352`). Its params are owned or copied, never borrowed (`KSEM353`). `async` is contextual (a local named `async` still binds).
-```kira
-async function total(a: Int, b: Int) -> Int { return a + b }
+The levels are `fault`, `warn`, `info` (the default), `debug` and `trace`. `warn` and `fault` need a message. Each field is named by its label or its source text, and a literal needs a label. `KIRA_LOG=info` or `KIRA_LOG=Shop=trace,warn` chooses what prints. By default a program prints its warnings and faults. Use `print` only for a program's actual output.
 
-let handle = Task { total(40, 2) }   // args evaluate now; body runs at first drive
-print(handle.await)                  // 42
-```
-A `Task { … }` body is one call to an `async function` (chosen among overloads) or a bare numeric literal; a body of any other shape (an expression, a method call) is `KSEM159`. Its arguments and result may be **any `Send` value** — `Int Float Bool String`, arrays, structs, classes, enums, `Any`, `RawPtr`, `distinct` — the same set channels carry (a value that owns storage crosses as a token into per-run storage and is recovered on the other side). The only type gate is `Send`: a non-`Send` argument or result — a closure/function value, a captured `var`, a task handle, native-state — is refused with `KSEM312`. Arity is bounded by the fixed task slots. A handle has exactly three ops (anything else `KSEM158`): `.await` (drive to completion, take the result — a `Void` body joins as `Int` `0`), `.requestCancel()` (ask a not-yet-run task not to run; awaiting it after traps), `.detach()` (drive and discard; awaiting after traps, as does joining twice). `taskYield()` is a cooperative suspend point; `taskSleep(ms)` advances a **virtual** clock then yields (nothing sleeps in real time, so ordering is identical on every backend). What a task takes and returns must be `Send` (`KSEM312`).
+## Write good Kira
 
-Channels are an ordered handoff. `Channel<Any>()` returns the **sender**; read the **receiver** off it as `.receiver` (one channel however many reads). `sender.send(v)`, `receiver.receive()`, `end.close()` on either end; anything else (incl. `.raw`) is `KSEM367`. `receive()` suspends and is fallible, so it is written `let v = try rx.receive()` inside an `attempt`; a drained closed channel answers `ChannelError.Closed` (cover it in `handle`), while sending to a channel whose receiver is gone traps. `Sender<Any>`/`Receiver<Any>` are distinct types; payloads must be `Send`.
+Older Kira code, such as most of Tessera, shows the patterns below. Do not copy them. Write the form in the right-hand column.
 
-## Main thread
-`@Main` runs on Kira's application **helper thread**, not the operating-system main thread. A framework that must use the process main thread marks its target `@MainThread` and reaches it only through one of three explicit operations, each taking a single direct call in a trailing block:
-```kira
-@MainThread function makeView(text: String) -> String { return text }
+| Do not write | Write |
+| --- | --- |
+| `let keyF12: U32 = U32(69)` and `if key == U32(69)` | An enum, `enum Key { F12 ... Other(U32) }`, matched with `match key { F12 -> ... }`. Raw codes exist only at the hardware or wire boundary, in one conversion function each way. |
+| `U32`/`U64` for a kind, role, opcode, state or flag | An `enum`. Flags are a `distinct` with namespaced constants, or a struct of `Bool`s. |
+| `U64` for a size, count, time or quantity | `Int`, or `Number` for exact quantities. Fixed widths only where a C or wire layout demands them. |
+| Prefixed globals: `let duOpWatch = U32(5)`, `var dmClients` | `namespace DiskOperation { let watch: ... }`, or an enum. State lives in a struct passed as `borrow mut`, not in prefixed globals. |
+| A constant behind a function: `function pageSize() -> Int { return 4096 }` | `namespace Memory { let pageSize: Int = 4096 }` |
+| `if x == a { ... } else if x == b { ... }` over one value | `match x { a -> ... b -> ... else -> ... }`. Strings and integers match too. |
+| `var i = 0` and `while i < n { ...; i = i + 1 }` | `for i in 0..n`, or `for item in items` |
+| `var running = true` and `while running { ... }` | `while true { ... }` with `break` or `return` |
+| `Error(failed) -> U64(0)`, `let _ = call()`, a dropped `Result` | Pass it up, match it, `otherwise`, or `absorb` with a reason (see Errors). |
+| `Bool` returns that hide why something failed | `Result<Value, Failure>` with a failure enum |
+| Magic numbers explained by a comment ("69 is F12") | A named enum case or a namespaced constant. The name is the explanation. |
+| Hand-parsed `processArgument(i)` loops | The `ArgumentParser` library: `ParsableCommand`, `@Derive(Parsable)`, `runCommand(...)` |
+| `print` for diagnostics, or a logging wrapper | `log info/warn/fault(...)` |
+| Hand-written `sqrt`, `min`, `clamp`, string search | Foundation: `sqrt`, `pow`, `min`, `max`, `clamp`, `abs`, `.split`, `.startsWith`, `.contains`, `.indexOf`, `.substring`, `.trim` |
+| `@Native` on every function | Nothing. `@Native` has no meaning on an ordinary Kira function. Use annotations only where they do something: `@Main`, `@FFI.*`, `@Derive`, `@AtExit`, `@MainThread`. |
+| One function doing everything, or files past 700 lines | Small functions named for what they answer. Split files by topic before they reach 700 lines. |
+| `Result<U64, ...>` carrying a status code | `Result` of the value the call produces. `.Ok` always carries a payload, and there is no `Void` payload. |
 
-let view = MainThread.invoke { makeView("Kira") }   // waits, returns the value
-let later = MainThread.spawn { makeView("later") }  // queues, handle with only `.await`
-MainThread.post { makeView("notify") }              // queues, no result (Void)
-```
-A direct call to an `@MainThread` function from the helper is rejected. Arguments and results are owned `Send` copies — no `borrow mut` across the boundary. `@MainThreadLifecycle` marks a zero-argument `Void` function that, called from `@Main`, starts a preserved event loop pinned to the process main thread and returns immediately; the instance keeps its locals and call stack across cooperative slices, its whole transitive call tree stays main-thread pinned, and multiple instances share slices and coexist with `@MainThread` work. Both annotations are unavailable on WebAssembly (`KSEM338`), and `@MainThread` cannot also be `@Main`.
+Also:
 
-## CLI
-`kira new <name>` · `kira add <pkg>` · `kira check [--backend b] <path>` (analyze, fast) · `kira run` (build+exec) · `kira build` (native/wasm artifact) · `kira test <path>` (run `Test` decls) · `knvm llvm install` (provision the LLVM bundle, required before llvm/native/hybrid builds). `<path>` = dir, manifest, or single `.kira`.
+- Name things for what they are, in full words: `volumes`, `openVolume(at:)`, not `vlTbl` or `doIt2`.
+- Comments explain why, in plain sentences. Do not restate the code.
+- Leave nothing half-typed. When you touch a function that uses a stand-in integer, give it the real type and update its callers.
 
-## Test
+## Tests
+
+A test package declares the `Test` family and a `TestRunner` collector. Copy them from klf-kira's `languages/kira/tests/app/`. A case looks like this:
+
 ```kira
 construct SumsRange() extends Test {
     test {
         var s = 0
-        for i in 0..5 {
-            s = s + i
-        }
+        for i in 0..5 { s += i }
         return s
     }
-    expect {
-        let e: Result<Any, TestFailure> = .Ok(10)
-        return e
-    }
+    expect { let e: Result<Any, TestFailure> = .Ok(10) return e }
 }
 ```
-A test case is a construct-family declaration: `construct <Name>() extends Test { test {…} expect {…} }`. `Test` is a family the test package declares (`tests-kik/harness`), not a compiler keyword. Both members use `Any`: `test() -> Any` and `expect() -> Result<Any, TestFailure>`, so the measured value erases into `Any` at `.Ok(10)`. Write the family's specialization `Result<Any, TestFailure>` exactly — `Result<Int, TestFailure>` is a different specialization and is rejected (`KSEM032`); build a helper's `Result<Int,…>` then unpack it. Use `import Foundation` once. `kira test` must end "0 failed". Reduce each test to a scalar it measures. A `return` solely inside a match or if arm infers no value → KSEM031, so use a `var out` accumulator. A trap test with `.Error(.Runtime(""))` passes iff the body traps.
 
-## Catches (don't guess from Rust/Swift/TS)
-- Keyword is `function`, never `fn`/`func`/`def`. No `pub`/`mut` keyword (use `var`). Return type accepts both `-> Int` and `): Int` (colon common); omit it for no-return functions.
-- **No `++`/`--`/`+=`/compound assign** — write `i = i + 1`. Count up with `for i in 0..n`.
-- **No string `+` concat, no `"\(x)"` interpolation** — text via `@Printable onPrint()` or pass values straight to `print`.
-- **No builtin null/nil/optional** — model absence with your own enum or `Result`; `None` only exists if declared.
-- Inside a method fields are bare (`value`) or `self.x`. Array API is `.append`/`.count`/`xs[i]` — not push/len/size; typed-uninit decl `var xs: [Int]` is allowed.
+`kira check --test <package>` checks the package and `kira build --test` builds it. A build with no tests is error 3371.
 
-## Gotchas
-- `print` is line-buffered: the default `StdoutHost` writes via Rust `println!`, flushing on each newline, so redirected and piped output arrives in full.
-- `knvm binstall` builds the compiler optimized and installs it under `~/.kira/toolchains/dev/<version>/`, pointing the `kira` launcher at it — the launcher runs the *installed* toolchain, so `cargo build` alone does not change what `kira` runs; rerun `knvm binstall` after compiler changes (or invoke `./target/release/kira` directly). `knvm sinstall` installs the tools themselves — `knvm`, the launcher, the language server — out of the checkout. Only matters when working on Kira itself.
-- KIR001 "not executable in current backend pipeline" = lowering gap; `kira check` names construct+span.
-- Headless env may SIGKILL (137) GUI/graphics `kira run`; validate with `kira check` + `kira test` instead.
+## When something fails
+
+- Read the code and the message. `docs/diagnostics.md` in klf-kira lists every code.
+- 9001: either the construct is outside the subset (`T?`, `import A.B`, an annotation with arguments), or a declaration is missing. Usually the missing declaration is `import Foundation`.
+- 3061 is an undefined function. Check Foundation for the real name before you invent one, for example with `grep -rn "function name" ~/.klf/toolchains/kira/dev/*/`.
+- 3394: the `Error` arm must bind its failure and use it.
+- 3021 or 3025: you mutated a `let`. Use `var`, or pass the value as `borrow mut`.
