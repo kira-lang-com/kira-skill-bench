@@ -7,7 +7,7 @@ description: Write, check and run Kira code with the KLF-hosted `kira` compiler 
 
 The compiler is `kira`, the Kira language defined in `.klfd` files (the klf-kira repository) and built by the Kira Language Framework. `knvm` installs it. What it accepts is listed in klf-kira's `languages/kira/docs/subset.md`. When the prose and the compiler disagree, the compiler is right: run `kira check`.
 
-Done means `kira check` is clean, and the code follows the "Write good Kira" rules below. Code that compiles but swallows errors, compares magic numbers or hand-rolls loops is not done.
+Done means `kira check` is clean, and the code follows every one of the "Rules for models" below. Code that compiles but swallows errors, compares magic numbers or hand-rolls loops is not done.
 
 ## Toolchain
 
@@ -23,14 +23,7 @@ Done means `kira check` is clean, and the code follows the "Write good Kira" rul
 
 A package is a directory with `package.kira` and `app/`. Every `.kira` file under `app/`, in any subdirectory, is one module. Files see each other without imports. Never import a sibling file.
 
-```kira
-Package Shop {
-    let version = "0.1.0"
-    let kind = PackageKind.App
-}
-```
-
-The typed construct form is stricter, because an unknown member is error 4003 rather than silently skipped. Prefer it when a manifest has dependencies:
+The manifest is a construct extending `Package`. It has no parentheses, and every member has a written type:
 
 ```kira
 construct Shop extends Package {
@@ -42,11 +35,13 @@ construct Shop extends Package {
 }
 ```
 
+Always write this form. The older `Package Shop { let version = "0.1.0" }` spelling still compiles, but it silently skips a misspelled member (`dependancies` reads as no dependencies). The construct form reports it as error 4003.
+
 - The members are `kind` (`.App` or `.Library`), `version`, `moduleRoot`, `dependencies` and `nativeLibraries`. `kira`, `defaults`, `packages` and `allowThinFfiShim` are accepted and ignored. Do not rely on `Defaults { executionMode: ... }`.
 - Only `path` dependencies resolve.
 - An app has exactly one `@Main function main()`, with no parameters. A library has none.
 - `import Foundation` gives `String`, `Any`, `Result`, `Optional`, `Number`, files, maths and logging. Without it there is no `String` type and no string literal. Imports are per file: each file imports what it uses.
-- `public` exports a top-level function, type, construct, trait or constant from a library. It never goes on a member.
+- `public` exports a top-level function, struct, class, enum, distinct, type alias, construct, trait, `let` or `namespace` from a library. The keyword is `public`; `pub` is a parse error (2002). `public` never goes on a member or inside a namespace (2092 and 2002). Export only what other packages call.
 
 ## The language
 
@@ -54,7 +49,8 @@ construct Shop extends Package {
   ```kira
   function name(label: Type) -> Result { ... }
   ```
-  - Leave out `-> Type` for a function that returns nothing.
+  - Leave out `-> Type` for a function that returns nothing. Such a function needs no trailing `return`; write `return` only to leave early.
+  - The keyword is `function`, never `fn`, `func`, `fun` or `def`.
   - A parameter is always `label: Type`.
 - Types:
   - `Int` is 64-bit signed and `Float` is 64-bit.
@@ -144,35 +140,99 @@ log fault("the table is corrupt", entries)
 
 The levels are `fault`, `warn`, `info` (the default), `debug` and `trace`. `warn` and `fault` need a message. Each field is named by its label or its source text, and a literal needs a label. `KIRA_LOG=info` or `KIRA_LOG=Shop=trace,warn` chooses what prints. By default a program prints its warnings and faults. Use `print` only for a program's actual output.
 
-## Write good Kira
+## Rules for models
 
-Older Kira code, such as most of Tessera, shows the patterns below. Do not copy them. Write the form in the right-hand column.
+Older Kira code, most of all Tessera, is full of patterns that compile and are still wrong. Every rule below is a pattern found there. None of them is allowed in code you write, and when you edit a function that has one, fix it there.
 
-| Do not write | Write |
-| --- | --- |
-| `let keyF12: U32 = U32(69)` and `if key == U32(69)` | An enum, `enum Key { F12 ... Other(U32) }`, matched with `match key { F12 -> ... }`. Raw codes exist only at the hardware or wire boundary, in one conversion function each way. |
-| `U32`/`U64` for a kind, role, opcode, state or flag | An `enum`. Flags are a `distinct` with namespaced constants, or a struct of `Bool`s. |
-| `U64` for a size, count, time or quantity | `Int`, or `Number` for exact quantities. Fixed widths only where a C or wire layout demands them. |
-| Prefixed globals: `let duOpWatch = U32(5)`, `var dmClients` | `namespace DiskOperation { let watch: ... }`, or an enum. State lives in a struct passed as `borrow mut`, not in prefixed globals. |
-| A constant behind a function: `function pageSize() -> Int { return 4096 }` | `namespace Memory { let pageSize: Int = 4096 }` |
-| `if x == a { ... } else if x == b { ... }` over one value | `match x { a -> ... b -> ... else -> ... }`. Strings and integers match too. |
-| `var i = 0` and `while i < n { ...; i = i + 1 }` | `for i in 0..n`, or `for item in items` |
-| `var running = true` and `while running { ... }` | `while true { ... }` with `break` or `return` |
-| `Error(failed) -> U64(0)`, `let _ = call()`, a dropped `Result` | Pass it up, match it, `otherwise`, or `absorb` with a reason (see Errors). |
-| `Bool` returns that hide why something failed | `Result<Value, Failure>` with a failure enum |
-| Magic numbers explained by a comment ("69 is F12") | A named enum case or a namespaced constant. The name is the explanation. |
-| Hand-parsed `processArgument(i)` loops | The `ArgumentParser` library: `ParsableCommand`, `@Derive(Parsable)`, `runCommand(...)` |
-| `print` for diagnostics, or a logging wrapper | `log info/warn/fault(...)` |
-| Hand-written `sqrt`, `min`, `clamp`, string search | Foundation: `sqrt`, `pow`, `min`, `max`, `clamp`, `abs`, `.split`, `.startsWith`, `.contains`, `.indexOf`, `.substring`, `.trim` |
-| `@Native` on every function | Nothing. `@Native` has no meaning on an ordinary Kira function. Use annotations only where they do something: `@Main`, `@FFI.*`, `@Derive`, `@AtExit`, `@MainThread`. |
-| One function doing everything, or files past 700 lines | Small functions named for what they answer. Split files by topic before they reach 700 lines. |
-| `Result<U64, ...>` carrying a status code | `Result` of the value the call produces. `.Ok` always carries a payload, and there is no `Void` payload. |
+Before you return any Kira, go through this list. A single hit means the code is not done.
 
-Also:
+### Types, not integers
 
-- Name things for what they are, in full words: `volumes`, `openVolume(at:)`, not `vlTbl` or `doIt2`.
-- Comments explain why, in plain sentences. Do not restate the code.
-- Leave nothing half-typed. When you touch a function that uses a stand-in integer, give it the real type and update its callers.
+1. **No integer stand-ins.** Never use `U32`, `U64` or `Int` for a kind, role, opcode, key, state, mode, reason, command or result code. Declare an `enum` and `match` on it.
+   - Wrong:
+     ```kira
+     if message.a == U32(69) { ... }   // 69 is F12
+     ```
+   - Right:
+     ```kira
+     match key { F12 -> ... else -> ... }
+     ```
+2. **An open set is an enum with a catch-all case.** Keys, device classes and protocol versions get one case per known value, plus `Other(U32)` for anything unknown. A raw code exists only where it is read off hardware or a wire. Write one conversion function each way, and keep both at that boundary.
+3. **No magic numbers.** A literal that needs a comment to say what it is ("usage 104", "opcode 5", "0x80 is the direction bit") must be an enum case or a namespaced constant. The name replaces the comment.
+4. **No sentinel values.** `U32(0)` for "no surface", `0xFFFFFFFF` for "not found", or `""` for "missing" are all forbidden. Use `Optional<T>` (`.Some(v)` or `.None`), or an enum case that names the absence.
+5. **No `ok: Bool` fields.** A struct like `{ ok: Bool, value: ... }` or `{ ok: Bool, problem: String, ... }` is a `Result<Value, Failure>`.
+6. **No generic payload fields.** Message structs with `a: U32, b: U32, c: U32, d: U32` are forbidden. Each message is an enum case carrying a struct with named, typed fields: `.GrabFired(GrabEvent { key: Key, state: KeyState })`. Decode the wire once into that enum.
+7. **No `Bool` encoded as an integer.** Neither `value != U32(0)` meaning true, nor `U32(1)` meaning pressed. Decode to `Bool`, or to an enum such as `KeyState { Released Pressed Repeated }`, at the boundary.
+8. **No `Bool` parameters that pick a behaviour.** `track(surface, true)` hides what `true` means. Use an enum (`.Desktop` or `.Application`), or two functions.
+9. **Flags are typed.** Write a `distinct Flags = U32` with its values in `namespace Flags`, and give it named tests such as `has(...)`. Never use bare `(x & U32(0x80)) != U32(0)` in logic. Never OR `.raw` values together outside the flag type's own functions.
+10. **Quantities are `Int` or `Number`.** Sizes, counts, lengths, offsets, durations, dates and money are never `U64` because a syscall used one. Dates are `Int` fields of a struct, or Foundation types, not `var year: U64`. Exact quantities, and anything crossing a library surface, are `Number`. Convert to a fixed width only in the call that crosses into C, the kernel or a wire.
+11. **IDs are `distinct`.** `distinct SurfaceId = U32` stops a surface from being passed as a window, and `.raw` appears only at the wire.
+
+### Errors
+
+12. **Never swallow a failure.**
+    - These are forbidden:
+      - `let _ = f()` on a `Result`;
+      - a bare call that drops a `Result`;
+      - `Error(failed) -> U64(0)`, `Error(failed) -> ""`, `Error(failed) -> false` or any other default;
+      - `absorb` without a comment that says why ignoring is correct.
+    - At each call, either pass the failure up (`try`), handle it (a `match` that acts or logs with the failure), or fall back on purpose (`try f() otherwise value`).
+13. **Fallible functions return `Result`, not `Bool`.** `send(...) -> Bool`, `install(...) -> Bool` and `writeAll(...) -> Bool` lose why they failed. Return `Result<Value, Failure>`, with a failure enum whose cases name each reason.
+14. **No status codes in `Ok`.** `Result<U64, E>`, where the `U64` is a code the caller must also check, is forbidden. The `Error` side carries every failure.
+15. **Failure enums are specific.** Use `enum InstallFailure { NotSigned DiskFull(Int) Exists(String) }`, not a single `Failed(String)`, and never a number.
+
+### Structure
+
+16. **No prefixed names.**
+    - `dkSurfaces`, `bsClients`, `ltShaUpdate`, `uiLetterFor`, `let duOpWatch: U32 = U32(5)`: a two- or three-letter program prefix on a name is forbidden.
+    - The package is already the namespace. Constants go in `namespace DiskOperation { let watch: ... }`. Operations become methods on the type they act on, through `extend Surface { ... }`.
+17. **No global mutable state.** `var dkSurfaces: [DkSurface] = []` at top level, reached by index from everywhere, is forbidden. Put the state in a struct, such as `struct Registry { var surfaces: [Surface] }`, owned by `main` and passed as `borrow mut`.
+18. **No constants behind functions.** `function pageSize() -> Int { return 4096 }` and zero-argument `@Native` constant functions are forbidden.
+    - A fixed value is a namespaced `let`.
+    - Settings and versions use `klist!`.
+    - A value worked out at run time is a function named for what it computes.
+19. **Constants live with their owner.** A system path such as `"/Applications"` or `"/Volumes/"`, a protocol size or an opcode table is declared once, in the library that owns it, and read from there. Never copy a literal path or number into a second file or package.
+20. **No copied helpers.** A helper that two packages need goes in the shared library, not into each package. Examples: reading a C string, page rounding, decimal text, argument decoding.
+21. **No `@Native` on ordinary functions.** It does nothing on a Kira function. The only annotations you may write are ones that do something: `@Main`, `@AtExit`, `@FFI.*`, `@Derive(...)`, `@Required`, `@MainThread`, `@Service` (Foundation only).
+22. **Raw memory only at the boundary.** Hand-computed offsets are forbidden in program logic. Examples: `heapLoad<U32>(block, Int(at + U64(12)))`, or field-by-field stores into a byte block.
+    - Declare the layout once as an `@FFI.Struct { layout: c }` and load or store it whole with `heapLoad<T>`/`heapStore<T>`.
+    - Alternatively, use the `Heap` library's `MemoryView`.
+    - Everything above that layer works with Kira structs.
+23. **Small functions, few parameters.** A function over about 60 lines is several functions. A function with six or more parameters takes a struct. Files stay under 700 lines and split by topic.
+24. **No trailing `return`** at the end of a function that returns nothing.
+
+### Control flow
+
+25. **`match`, not `if` chains.** Two or more `if x == ... else if x == ...` tests on one value are a `match`. Integers and strings match too. Use `return match x { ... }` when each arm yields a value.
+26. **`for`, not counters.**
+    - Wrong: `var i = 0`, then `while i < n { ...; i = i + 1 }`.
+    - Right: `for i in 0..n`.
+    - Iterate elements with `for item in items`, not `for i in 0..items.count { items[i] }`. Index only when you need the index to write back.
+27. **No flag loops.** Do not write `var running = true` with `while running { ... }`. Write `while true { ... }` and leave with `break` or `return`.
+28. **Use the expected type.** Write `.Case`, not `Enum.Case`, where the type is known.
+
+### Output and input
+
+29. **`log`, never `print`, for diagnostics.** Also never write a per-program logging wrapper (`dvLog`, `pwLog`). Pass values to `log` as fields, without converting them first: `log info("grabbed a key", key)`, not `key: Int(key)`. `print` is only for a command's real output to its user.
+30. **Command lines use `ArgumentParser`.** Hand-reading `processArgument(i)`, `envArgument(i)` or argument counts is forbidden. Declare a `ParsableCommand` and run it with `runCommand(...)`.
+31. **Use Foundation.** Before writing a helper, check whether Foundation already has it:
+    - maths: `sqrt`, `pow`, `min`, `max`, `clamp`, `abs`, `floor`;
+    - text: `.split`, `.trim`, `.startsWith`, `.endsWith`, `.contains`, `.indexOf`, `.substring`, `String(x)`;
+    - files: `readFile`, `writeFile`, `listDirectory`, `pathExists`;
+    - C strings: `stringFromCBytes`.
+
+### Naming and comments
+
+32. **Full-word names for what a thing is.** Write `openVolume`, `surfaces` and `KeyState`. Never write `vlTbl`, `tmp2`, `doIt` or `handleThing`.
+33. **Comments say why.** A comment that restates the code, or explains a magic number that should have been a name, is removed. The fix is the name.
+
+### Final check
+
+Before you hand back code:
+
+- `kira check` is clean.
+- `grep` your change for `let _ =`, `U32(`, `U64(`, `@Native`, `print(`, `while ` and `== U`.
+- Every hit is either at the C or wire boundary, or gets fixed.
 
 ## Tests
 
