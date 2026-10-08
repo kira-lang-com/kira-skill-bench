@@ -1,29 +1,47 @@
 ---
 name: working-with-kira
-description: Write, check and run Kira code with the KLF-hosted `kira` compiler (klf-kira, installed by knvm). Use it whenever you create or edit `.kira` files, `package.kira` manifests or Kira libraries, so the code compiles on the current compiler and reads as idiomatic Kira, not C written in Kira syntax.
+description: Write, check and run Kira code with the KLF-hosted `kira` compiler (klf-kira, installed by knvm). Use it whenever you create or edit `.kira` files, `package.kira` manifests or Kira libraries. It holds the language as the compiler accepts it, the builtins, Number as the default numeric type, and the strict rules every piece of Kira you write must follow.
 ---
 
 # Working with Kira
 
-The compiler is `kira`, the Kira language defined in `.klfd` files (the klf-kira repository) and built by the Kira Language Framework. `knvm` installs it. What it accepts is listed in klf-kira's `languages/kira/docs/subset.md`. When the prose and the compiler disagree, the compiler is right: run `kira check`.
+The compiler is `kira`, the Kira language defined in `.klfd` files (the klf-kira repository), built by the Kira Language Framework and installed by `knvm`. klf-kira's `languages/kira/docs/subset.md` lists what it accepts. Where this skill, the docs and the compiler disagree, the compiler is right.
 
-Done means `kira check` is clean, and the code follows every one of the "Rules for models" below. Code that compiles but swallows errors, compares magic numbers or hand-rolls loops is not done.
+**The rules in this skill are mandatory.**
+- Code that breaks one is wrong, even when `kira check` is clean.
+- No rule has an exception unless the rule itself states it.
+- "The surrounding code does it" is never a reason: much existing Kira, Tessera above all, is written in exactly the patterns forbidden here.
+- When you touch code that breaks a rule, fix it.
 
 ## Toolchain
 
-- `kira check [<path>]` reports diagnostics and writes nothing. It is fast; run it after every edit. `<path>` is a package directory, its manifest or any file in it.
-- `kira run <path> [-- args]` builds an executable and runs it. `kira build <path> -o out` builds. `-o`'s extension, or `--emit kir|klbc|bin|lib|shared|ridl|run`, chooses the output. `--target <triple>` cross-compiles, and `--release` builds a release.
-- `kira build --emit ridl -o X.ridl <library>` writes a library's RIDL contract.
-- `kira format [--check] <path>` formats in place, with a width of 100 and 4 spaces.
-- `knvm install latest` installs a release. `knvm binstall` builds and installs a klf-kira checkout as the dev toolchain, and `knvm sinstall` installs `knvm` and the launchers. The `kira` launcher runs the installed toolchain, so rerun `knvm binstall` after changing the compiler.
-- There is no `kira test`, `kira lint` or `--backend`. Tests build with `--test` (see below).
-- Diagnostics are numeric: `error[3025]`. The thousands band is the family: 1xxx lexer, 2xxx parser, 3xxx semantics, 4xxx packages, 5xxx macros. 9001 is "outside the supported subset", or a missing declaration such as no `import Foundation`.
+- `kira check <path>` reports diagnostics and writes nothing. Run it after every edit.
+  - `<path>` is a package directory, its `package.kira`, or any file in it. Use `kira check .` inside a package.
+  - The path is required.
+- `kira run <path> [-- args]` builds an executable and runs it.
+- `kira build <path> -o out` builds.
+  - `-o`'s extension, or `--emit kir|klbc|bin|lib|shared|ridl|run`, chooses the output.
+  - `--target <triple>` cross-compiles.
+  - `--release` makes a release build.
+  - `--test` makes a test build.
+- `kira build --emit ridl -o X.ridl <library>` writes a library's RIDL contract. It holds the library's `public` functions and constants.
+- `kira format <path>` formats in place, at width 100 with 4 spaces.
+  - `kira format --check <path>` lists the files that are not formatted, and exits 1 if there are any.
+- `knvm install latest` installs a release.
+  - `knvm binstall` builds the klf-kira checkout you are in and installs it as the dev toolchain.
+  - `knvm sinstall` installs `knvm` and the launchers onto PATH.
+  - The `kira` launcher runs the installed toolchain. After changing the compiler, rerun `knvm binstall`.
+- `kira test`, `kira lint` and `--backend` do not exist.
+- Diagnostics are numeric, such as `error[3025]`. The thousands band is the phase: 1xxx lexer, 2xxx parser, 3xxx semantics, 4xxx packages, 5xxx macros.
+  - 9001 means "outside the supported subset", or a missing declaration, most often no `import Foundation`.
+  - klf-kira's `languages/kira/docs/diagnostics.md` lists every code.
+- The installed standard library is at `~/.klf/toolchains/kira/dev/<version>/std/`. Read it before you call or invent a Foundation function.
 
 ## Packages
 
-A package is a directory with `package.kira` and `app/`. Every `.kira` file under `app/`, in any subdirectory, is one module. Files see each other without imports. Never import a sibling file.
+A package is a directory holding `package.kira` and `app/`. Every `.kira` file under `app/`, in any subdirectory, is part of one module: the files see each other's declarations. Never import a sibling file.
 
-The manifest is a construct extending `Package`. It has no parentheses, and every member has a written type:
+The manifest is a construct extending `Package`, with no parentheses and with every member's type written:
 
 ```kira
 construct Shop extends Package {
@@ -35,68 +53,186 @@ construct Shop extends Package {
 }
 ```
 
-Always write this form. The older `Package Shop { let version = "0.1.0" }` spelling still compiles, but it silently skips a misspelled member (`dependancies` reads as no dependencies). The construct form reports it as error 4003.
+- **Always write the construct form.** The old `Package Shop { let version = "0.1.0" }` form compiles, but it silently ignores a misspelled member. The construct form reports one as error 4003.
+- **Members:**
+  - `kind` is `.App` (the default) or `.Library`.
+  - `version`, `moduleRoot` (the construct's name by default), `dependencies` and `nativeLibraries`.
+  - `kira`, `defaults`, `packages` and `allowThinFfiShim` are accepted and ignored. Do not write `defaults`.
+- **Dependencies:** only `path` dependencies resolve.
+  - `import Foundation` needs no row.
+  - Other bundled libraries need a path dependency. `Heap`, for example, is at `~/.klf/toolchains/kira/dev/<version>/std/heap`.
+- **Entry point:** an app has exactly one `@Main function main()`, with no parameters. A library has none.
+- **Imports:**
+  - `import Foundation` provides `String`, `Any`, `Result`, `Optional`, `Number`, files, maths and text. Without it there is no `String` type, so no string literal compiles.
+  - Imports are per file: each file imports what it uses.
+  - `import Name as Alias` renames a library in that file.
+- **`public`** exports a top-level function, struct, class, enum, distinct, type alias, construct, trait, `let` or `namespace` from a library.
+  - The keyword is `public`. `pub` is error 2002.
+  - `public` on a struct member is error 2009, and inside a namespace it is error 2002. Use `public namespace` instead.
+  - Export only what other packages call.
 
-- The members are `kind` (`.App` or `.Library`), `version`, `moduleRoot`, `dependencies` and `nativeLibraries`. `kira`, `defaults`, `packages` and `allowThinFfiShim` are accepted and ignored. Do not rely on `Defaults { executionMode: ... }`.
-- Only `path` dependencies resolve.
-- An app has exactly one `@Main function main()`, with no parameters. A library has none.
-- `import Foundation` gives `String`, `Any`, `Result`, `Optional`, `Number`, files, maths and logging. Without it there is no `String` type and no string literal. Imports are per file: each file imports what it uses.
-- `public` exports a top-level function, struct, class, enum, distinct, type alias, construct, trait, `let` or `namespace` from a library. The keyword is `public`; `pub` is a parse error (2002). `public` never goes on a member or inside a namespace (2092 and 2002). Export only what other packages call.
+## Numbers: `Number` first
+
+**`Number` is Kira's default and recommended numeric type.**
+- It is Foundation's exact decimal: a signed 65-bit mantissa, so every `Int` and every `U64` fits, with up to eighteen fractional digits. `0.1 + 0.2 == 0.3` holds.
+- Use `Number` for every numeric value in program logic and in library surfaces: amounts, measures, prices, sizes, durations, rates, coordinates and counters you keep.
+
+```kira
+struct Price {
+    let amount: Number
+}
+
+function total(prices: borrow [Price]) -> Number {
+    var sum: Number = 0
+    for price in prices { sum += price.amount }
+    return sum
+}
+```
+
+- **Annotate it.** A bare literal is an `Int` or a `Float`: `let n = 3` is an `Int`. Write `let n: Number = 3`, `var sum: Number = 0` or `let rate: Number = 0.25`. A literal passed to a `Number` parameter, or written into a `Number` field, becomes a `Number` without help.
+- **Operators:**
+  - `+ - * / %`, comparisons, `+=`, `-=`, `++` and unary `-` all work.
+  - `& | ^ ~ << >>` work on whole values and trap on a fraction.
+  - Division by zero traps. `Number(1) / Number(3)` is `0.333333333333333333`.
+- **Conversions:**
+  - `Number(x)` takes any integer width, a `Float` or a `String`.
+  - `Int(n)`, `U32(n)` and the other widths truncate toward zero, and trap outside their range.
+  - `String(n)` is the decimal text, and `Float(n)` the nearest float.
+  - A hexadecimal literal where a `Number` is expected names a `U64`'s bits: `0xffffffffffffffff` is `18446744073709551615`.
+- **Where Kira needs another type, and only there:**
+  - `for` range bounds, array indexes and `.count` are `Int`. Convert once: `for i in 0..Int(limit)`, `Number(items.count)`.
+  - `Int` and `Number` never mix in one expression (error 3071).
+  - `match` cannot take a `Number` (error 3125). Compare with `<` and `==`, or `match` on an enum the number decodes to.
+  - A C layout, a syscall, a wire format or a hardware register takes the fixed width it declares (`U32`, `U64`, `I32`...). Convert at that call and nowhere else.
+  - A parameter that a library declares as `Int`, `Float` or `F32` gets that type at the call.
+- **Foundation functions:** `sqrt`, `min`, `max` and `abs` take `Number`.
+- **Logging:** a trail shows a `Number` field as `<number>`, so log it as text: `log info("charged", amount: String(amount))`.
+- **Libraries:** a public `Number` constant crosses RIDL when its mantissa fits an `Int`.
+
+`Int` is for indexes, loop positions and collection sizes. `Float` and `F32` are for APIs that demand them, such as graphics. Fixed-width integers belong at a binary boundary. Never pick `Int`, `Float` or `U64` "because it is simpler".
 
 ## The language
 
-- `let` is immutable and `var` is mutable. A type annotation is optional; an initializer is required. Function declarations look like this:
-  ```kira
-  function name(label: Type) -> Result { ... }
-  ```
-  - Leave out `-> Type` for a function that returns nothing. Such a function needs no trailing `return`; write `return` only to leave early.
+- **Bindings and functions:**
+  - `let` is immutable and `var` is mutable. A type annotation is optional; an initializer is required.
+  - A function is declared `function name(label: Type) -> Result { ... }`.
   - The keyword is `function`, never `fn`, `func`, `fun` or `def`.
   - A parameter is always `label: Type`.
-- Types:
-  - `Int` is 64-bit signed and `Float` is 64-bit.
-  - The fixed widths are `I8 I16 I32 U8 U16 U32 U64 F32`.
-  - The other built-in types are `Bool`, `Void` and `RawPtr`.
-  - Foundation adds `String`, `Any`, `[T]` and `Number`. `Number` is an exact decimal with a 65-bit mantissa and bitwise operators on whole values.
-  - Widths never mix silently. Convert with a call, such as `U32(x)` or `Int(b)`, and the conversion traps when the value does not fit. Arithmetic traps on overflow.
-- Kira has no semicolons (error 1005). Statements, fields, cases and match arms are separated by newlines.
-- Operators:
-  - Arithmetic, bitwise, comparison and `? :` work as usual.
-  - Compound assignment: `+= -= *= /=`.
-  - `i++` works.
-  - String `+` concatenates. Turn a value into text with `String(x)`.
-  - There is no `"\(x)"` interpolation.
-- `for i in 0..n` is half-open. `for item in items` binds each element, and there is no `enumerated()`. `while cond`, `while true`, `break` and `continue` all work, also inside a `match` arm.
-- `struct` has value semantics, with fields and methods. A method takes `borrow self`, the default, or `borrow mut self`. Inside a method, a bare name is a field. A struct literal is written `Point { x: 1, y: 2 }`.
+  - A function that returns nothing leaves out `-> Type` and has no trailing `return`. Write `return` only to leave early.
+- **Types:**
+  - `Number`, `Int` (64-bit signed), `Float` (64-bit), `Bool`, `Void` and `RawPtr`.
+  - Fixed widths are `I8 I16 I32 U8 U16 U32 U64 F32`. There is no `I64`: use `Int`.
+  - Foundation adds `String`, `Any`, `[T]`, `Optional<T>` and `Result<T, E>`.
+  - Widths never mix: convert with a call, which traps when the value does not fit. Integer arithmetic traps on overflow.
+- **Separators:**
+  - Kira has no semicolons (error 1005). Statements, fields, enum cases and match arms are separated by newlines.
+  - Struct literal fields, arguments and array elements are separated by commas.
+- **Operators:**
+  - Arithmetic, bitwise, comparison, `&& || !` and `cond ? a : b`.
+  - `+= -= *= /=` and `i++`.
+  - `+` concatenates strings. `String(x)` turns a `Number`, an integer, a `Float` or a `Bool` into text.
+  - There is no string interpolation: `"\(x)"` is error 1003.
+- **Loops:**
+  - `for i in 0..n` runs over a half-open `Int` range.
+  - `for item in items` binds each element. There is no `enumerated()` and no tuple pattern (error 2012).
+  - `while cond` and `while true` work.
+  - `break` and `continue` work, including inside a `match` arm.
+- **Structs and classes:**
+  - `struct` is a value type with `let` and `var` fields and methods. A field may have a default, `= value`.
+  - A struct literal is written `Point { x: 1, y: 2 }`.
+  - A method's receiver is `borrow self` (the default when left out) or `borrow mut self`. Inside a method, a bare name reads a field or calls a sibling method.
+  - `extend Type { ... }` adds methods, also from another file.
+  - A method cannot declare its own type parameters (error 2047). A method of a generic struct uses the struct's.
   - `class` has reference storage. Bind it with `var` to call a `borrow mut self` method.
-- `enum` cases are separated by whitespace and carry at most one payload, `Case(Type)`. Generic enums and structs are allowed, such as `Optional<Value>` with `.Some(v)` and `.None`. The `T?` shorthand is not.
-- `match` works on enums, integers and strings. It must be exhaustive, and `else ->` covers the rest. Arms name cases unqualified and bind a payload with `Case(x)`. A `match` is an expression: `return match x { ... }`.
-- A leading dot, `.Case`, works where the type is known: an annotation, a parameter, a return, a field, or the other side of `==`.
-- `trait Name { function f() -> T }`, then `struct S: Name { ... }`. A trait's bare name in a type position is its existential: `-> Greeter`.
-- `construct Family { @Required ... }` declares a construct family. A value joins it with `Family Name { ... }`.
-- `namespace Name { let member: T = value }` groups constants, read as `Name.member`. `public namespace` exports every member. A constant `let` is folded in place and costs nothing at run time.
-- `distinct Metres = Int` makes a new type. Build it with `Metres(5)` and read it back with `.raw`.
-- `type Name = Target` declares a nominal alias.
-- Ownership is affine. A non-Copy value moves on use, so pass `move v` to an owned parameter.
-  - Declare a read-only parameter as `borrow T`, and one the function writes as `borrow mut T`. The caller passes a `var` to `borrow mut`.
-  - Pass an argument straight to a `borrow` parameter.
-- `async function f(...)` runs as a task: `let h = Task { f(1, 2) }`, then `h.await`.
-  - `Channel<T>()` returns the sender. Its other end is `.receiver`, and `try rx.receive()` takes one message.
-- Lambdas are written `{ x in ... }`. They need a function type to come from somewhere: `let g: (Int) -> Int = { x in return x + 1 }`.
-- `comptime function` runs at compile time.
-  - A declarative macro is `macro name(x: expr) { expand { ... } }`.
-  - `@Derive(Equatable)` generates `eq_Name`. It does not generate `==`.
-  - `@Derive(Tagged)` numbers cases from zero in declaration order, so it is wrong for wire codes that must stay fixed.
-- `klist!("Info.klist", "Key")` reads a `.klist` value. In a release it is inlined. In a debug build it is read at run time.
+- **Enums:**
+  - Cases are separated by whitespace, and each carries at most one payload, `Case(Type)`.
+  - Generic enums and structs work: `Optional<Value>` with `.Some(v)` and `.None`, and `Result<Value, Failure>` with `.Ok(v)` and `.Error(f)`.
+  - The `T?` shorthand is error 9001.
+- **`match`:**
+  - It takes an enum, an integer, a `Bool` or a `String`, and must be exhaustive.
+  - Arms name cases unqualified, as `Case(binding) -> ...`. `else ->` covers the rest (but see rule 27).
+  - `match` is an expression: `return match x { ... }`.
+- **Leading dot:** `.Case` resolves where the expected type is known. That means an annotation, a parameter, a return, a struct field, an array element, the other side of `==`, or an outer payload. With no expected type, it is error 3119.
+- **Traits:** `trait Name { function f() -> T }`, then `struct S: Name { ... }`. A trait's bare name in a type position is its existential: `-> Greeter`.
+- **Construct families:**
+  - `construct Family { @Required function f() -> T }` declares a family.
+  - `Family Member { ... }` declares a member, and `Member()` builds its value.
+  - `Any Family` is the family's existential.
+- **Namespaces:** `namespace Name { let member: T = value }` holds constants, read as `Name.member`.
+  - `public namespace` exports every member.
+  - A constant `let` is folded in place, with no load and no initializer.
+- **Distinct types and aliases:**
+  - `distinct Metres = Int` is built with `Metres(5)` and read with `.raw`.
+  - `type Name = Target` is a nominal alias.
+- **Ownership** is affine: a non-Copy value moves on use.
+  - Pass `move value` to an owned parameter.
+  - A parameter that only reads is `borrow T`. One that writes is `borrow mut T`, and the caller passes a `var`.
+  - `copy value` makes an explicit copy.
+- **Lambdas:** `{ x in ... }`, typed by a function type: `let g: (Int) -> Int = { x in return x + 1 }`. A lambda captures `let`s by value and `var`s by a shared cell.
+- **Tasks:** `async function f(...)` is a task entry. Start it with `let h = Task { f(1, 2) }` and join it with `h.await`.
+- **Channels:** `Channel<T>()` returns the sender, and `.receiver` is the other end.
+  - `tx.send(v)` sends and `tx.close()` closes.
+  - Receive with `let v = try rx.receive()` inside `attempt`, and handle `Closed`.
+- **Main thread:** an `@MainThread function` is reached only through:
+  - `MainThread.invoke { f() }`, which waits for the value;
+  - `MainThread.spawn { f() }`, which returns a handle to `.await`;
+  - `MainThread.post { f() }`.
+- **Program end:** `@AtExit function finished(reason: Int, detail: Int)` runs when the program ends.
+- **Compile time:**
+  - A `comptime function` with constant arguments runs while compiling.
+  - A declarative macro is `macro twice(value: expr) { expand { value + value } }`, invoked as `twice!(4)`.
+  - A procedural macro is `comptime macro Name { kind { ... } expand(...) -> Syntax { ... } }`.
+- **Derives:**
+  - `@Derive(Equatable)` generates the free function `eq_Name(a, b)`. It does not generate `==`.
+  - `@Derive(Tagged)` numbers cases from zero in declaration order (`code_Name`, `Name_fromCode`). Never use it for wire codes that must keep their values.
+- **Embedded files:** both paths are relative to the package root.
+  - `klist!("Info.klist", "Key")` reads a `.klist` value: a number as `Number`, a string as `String`, a `Bool`, `[U8]` data or `[String]`.
   - `ksl!("app/Shaders/X.ksl")` embeds a shader.
-  - Both paths are relative to the package root.
-- `@FFI.Extern { library: name, symbol: c_name, abi: c }` on a function with no body calls into C. The values in the block are bare words.
-  - `@FFI.Syscall { name: write }` is a Linux system call.
+- **Foreign functions:**
+  - `@FFI.Extern { library: name, symbol: c_name, abi: c }` goes on a function with no body.
+    - `library:` must name a `NativeLibrary` in `nativeLibraries` (error 3372).
+    - The values are bare words.
+  - `@FFI.Syscall { name: getpid }` declares a Linux system call.
   - `@FFI.Struct { layout: c }` lays a struct out as C does.
-- Raw memory, only at a hardware or OS boundary: `heapLoad<T>(p, offset)`, `heapStore<T>(p, offset, v)`, `sizeOf<T>()`, or the `Heap` library's `MemoryView` and `ByteBlock`.
+
+## Builtins
+
+These need no import and no declaration. Never declare a function with a builtin's name: for `code`, `compare` and `hash`, your declaration silently replaces the builtin.
+
+| Builtin | What it does |
+| --- | --- |
+| `print(v)` | Writes a `String`, integer, `Float` or `Bool` and a newline. Only for a program's real output. |
+| `log`, `log fault/warn/info/debug/trace(...)` | Records an event (see Logging). |
+| `traceText(v)` | Any value as readable text: `Point { x: 1, y: 2 }`, `Tone.Label("x")`. |
+| `code(e)`, `fromCode<E>(n)` | An enum case's index, and back. `fromCode` takes payload-less enums only. |
+| `compare(a, b)` | `Ordering`: `.Less`, `.Equal` or `.Greater`. |
+| `hash(v)` | A hash that agrees with `==`. |
+| `T(x)` conversions | `Number(x)`, `Int(x)`, `U8(x)`..., `Float(x)`, `String(x)`, and `Metres(x)` for a distinct type. Narrowing traps when the value does not fit. |
+| `v is T`, `v as T` | Tests and unwraps an `Any`. |
+| `wrappingAdd`, `wrappingSub`, `wrappingMul` | Arithmetic that wraps at the operands' width instead of trapping. Only for hashes, checksums and sequence numbers. |
+| `floatToBits(f)`, `bitsToFloat(u)` | A `Float`'s IEEE bits as a `U64`, and back. |
+| `runtimeTrap()` | Stops the program with a trap. |
+| `Build.debug()`, `Build.release()` | The build mode, as constants, anywhere. |
+| `Build.platform()`, `Build.target()`, `Build.testing()`, `Build.linting()` | Only inside a `comptime function` or a macro. Elsewhere they are error 3060. |
+| `Task { f(...) }`, `.await`, `.requestCancel()`, `.detach()`, `Channel<T>()`, `MainThread.invoke/spawn/post` | Concurrency (see above). |
+| `klist!`, `ksl!` | Embedded files (see above). |
+| `nativeState(v)`, `nativeUserData(s)`, `nativeStateValue(token) as T` | Hand a Kira value to C as an opaque word, and get it back. |
+| `sizeOf<T>()`, `alignOf<T>()` | The C size and alignment of a C-shaped type. |
+| `heapAllocateRaw(bytes, align)`, `heapFreeRaw(p)`, `heapLoad<T>(p[, offset])`, `heapStore<T>(p, [offset,] v)`, `heapOffset(p, n)`, `heapCopyBytes`, `heapMoveBytes`, `heapFillBytes`, `heapReadByte`, `heapWriteByte`, `heapReadInt`, `heapWriteInt`, `rawPointerWord(p)` | Raw memory, only in the one layer that talks to C, the kernel or hardware (rule 22). `heapAllocateRaw` does not zero. Typed loads take only C-shaped types (error 3397). |
+
+Foundation (`import Foundation`) provides:
+- maths: `sqrt`, `pow`, `min`, `max`, `clamp`, `abs`, `floor`, `ceil`, `round`, `sin`, `cos` and the rest;
+- text: `.count`, `.trim()`, `.split(",")`, `.startsWith`, `.endsWith`, `.contains`, `.indexOf`, `.substring(from, to)`;
+- arrays: `.append`, `.count`, `.contains`, `xs[i]`;
+- files: `fileExists`, `pathExists`, `isDirectory`, `readFile(path).text`, `writeFile(path, text)`, `listDirectory(path).names`, `makeDirectory`, `removePath`, `renamePath`;
+- C strings: `stringFromCBytes(pointer, limit)`;
+- time: `unixMillis()`.
+
+Several Foundation file functions answer a `Bool` or an `ok` field. Check it at every call and turn it into your own `Result` (rule 13).
 
 ## Errors
 
-A fallible function returns `Result<Value, Failure>`, where `Failure` is an enum that names what went wrong.
+A fallible function returns `Result<Value, Failure>`. `Failure` is an enum with one case per reason the call can fail.
 
 ```kira
 enum LoadFailure {
@@ -110,133 +246,155 @@ function load(path: borrow String) -> Result<Config, LoadFailure> {
 }
 ```
 
-You have four ways to deal with a failure. Pick one at every call.
+At every call that returns a `Result`, do exactly one of these:
 
-1. Pass it up with `try`, inside `attempt`/`handle` or with `otherwise return`:
-   ```kira
-   let config = try load(path) otherwise return .Error(.Corrupt)
-   ```
-2. Match it and act:
+1. **Pass it up** with `try`.
+   - Use `let config = try load(path) otherwise return .Error(.Corrupt)`.
+   - Or, inside `attempt`, write `let v = try f()` with a `handle { Case { ... } }` block.
+2. **Handle it:**
    ```kira
    match load(path) {
        Ok(config) -> apply(config)
        Error(failure) -> log warn("could not load the configuration", path, failure)
    }
    ```
-3. Fall back on purpose: `let n = try parse(text) otherwise 0`. This records the fallback on the trail.
-4. Let it go explicitly: `Error(failure) -> absorb failure`. Do this only when ignoring the failure is correct, and add a comment saying why.
+3. **Fall back deliberately:** `let n = try parse(text) otherwise 0`. The fallback is recorded on the trail.
+4. **Let it go:** `Error(failure) -> absorb failure`, with a comment on the line above saying why ignoring it is correct.
 
-An `Error(_)` arm, or an `else` arm standing in for `Error`, is error 3394. The compiler still accepts `let _ = f()` and a bare `f()` that drops a `Result`. Never write either: each one silently swallows a failure.
+An `Error(_)` arm, or an `else` arm standing for `Error`, is error 3394. The compiler still accepts `let _ = f()` and a bare `f()` that drops a `Result`. Both are forbidden.
 
 ## Logging
 
-Logging is a statement, not a function. Do not use `print` for diagnostics, and do not write per-program wrappers such as `myLog(...)`.
+`log` is a statement. Diagnostics never go through `print` or through a wrapper of your own.
 
 ```kira
-log info("opened the volume", path, size: Int(bytes))
+log info("opened the volume", path, size: String(size))
 log warn("could not open the volume", path, failure)
 log fault("the table is corrupt", entries)
 ```
 
-The levels are `fault`, `warn`, `info` (the default), `debug` and `trace`. `warn` and `fault` need a message. Each field is named by its label or its source text, and a literal needs a label. `KIRA_LOG=info` or `KIRA_LOG=Shop=trace,warn` chooses what prints. By default a program prints its warnings and faults. Use `print` only for a program's actual output.
+- **Levels:** `fault`, `warn`, `info` (the default), `debug` and `trace`.
+- **Message:** `fault` and `warn` start with a string literal message (error 2095).
+- **Fields** are named by their label or their source text. A literal needs a label (error 2096): `log("sent", bytes: 4)`.
+  - Pass values as they are, without converting them for the log.
+  - The one exception is a `Number`, which you log as `String(n)`.
+- **Output:** `KIRA_LOG` chooses what prints: `off`, `warn`, `info`, `trace`, or per module, as in `Shop=trace`. Unset, a program prints `info` and above.
 
-## Rules for models
+## Rules
 
-Older Kira code, most of all Tessera, is full of patterns that compile and are still wrong. Every rule below is a pattern found there. None of them is allowed in code you write, and when you edit a function that has one, fix it there.
+Every rule forbids a pattern found in existing Kira code. Each one applies to every line you write. When you edit a function, fix every violation in it.
 
-Before you return any Kira, go through this list. A single hit means the code is not done.
+### Types
 
-### Types, not integers
-
-1. **No integer stand-ins.** Never use `U32`, `U64` or `Int` for a kind, role, opcode, key, state, mode, reason, command or result code. Declare an `enum` and `match` on it.
-   - Wrong:
-     ```kira
-     if message.a == U32(69) { ... }   // 69 is F12
-     ```
-   - Right:
-     ```kira
-     match key { F12 -> ... else -> ... }
-     ```
-2. **An open set is an enum with a catch-all case.** Keys, device classes and protocol versions get one case per known value, plus `Other(U32)` for anything unknown. A raw code exists only where it is read off hardware or a wire. Write one conversion function each way, and keep both at that boundary.
-3. **No magic numbers.** A literal that needs a comment to say what it is ("usage 104", "opcode 5", "0x80 is the direction bit") must be an enum case or a namespaced constant. The name replaces the comment.
-4. **No sentinel values.** `U32(0)` for "no surface", `0xFFFFFFFF` for "not found", or `""` for "missing" are all forbidden. Use `Optional<T>` (`.Some(v)` or `.None`), or an enum case that names the absence.
-5. **No `ok: Bool` fields.** A struct like `{ ok: Bool, value: ... }` or `{ ok: Bool, problem: String, ... }` is a `Result<Value, Failure>`.
-6. **No generic payload fields.** Message structs with `a: U32, b: U32, c: U32, d: U32` are forbidden. Each message is an enum case carrying a struct with named, typed fields: `.GrabFired(GrabEvent { key: Key, state: KeyState })`. Decode the wire once into that enum.
-7. **No `Bool` encoded as an integer.** Neither `value != U32(0)` meaning true, nor `U32(1)` meaning pressed. Decode to `Bool`, or to an enum such as `KeyState { Released Pressed Repeated }`, at the boundary.
-8. **No `Bool` parameters that pick a behaviour.** `track(surface, true)` hides what `true` means. Use an enum (`.Desktop` or `.Application`), or two functions.
-9. **Flags are typed.** Write a `distinct Flags = U32` with its values in `namespace Flags`, and give it named tests such as `has(...)`. Never use bare `(x & U32(0x80)) != U32(0)` in logic. Never OR `.raw` values together outside the flag type's own functions.
-10. **Quantities are `Int` or `Number`.** Sizes, counts, lengths, offsets, durations, dates and money are never `U64` because a syscall used one. Dates are `Int` fields of a struct, or Foundation types, not `var year: U64`. Exact quantities, and anything crossing a library surface, are `Number`. Convert to a fixed width only in the call that crosses into C, the kernel or a wire.
-11. **IDs are `distinct`.** `distinct SurfaceId = U32` stops a surface from being passed as a window, and `.raw` appears only at the wire.
+1. **No integer stand-ins.** A kind, role, opcode, key, button, state, mode, reason, command, message type or result code is never an `Int`, `U32` or `U64`. Declare an `enum`.
+   - Wrong: `if message.a == U32(69) { ... }   // 69 is F12`
+   - Right: `match key { F12 -> ... }`
+2. **An open set is an enum with a catch-all.**
+   - Keyboard keys, device classes, protocol versions and anything else that can grow get one case per known value, plus `Other(U32)` for unknown codes.
+   - A raw code is converted to the enum once, where it is read, and back once, where it is written. Both conversion functions sit at that boundary.
+3. **No magic numbers.** Every literal other than 0, 1 or a value obvious in place (`count * 2`) is an enum case or a namespaced constant. A literal that needs a comment to say what it is ("usage 104", "opcode 5", "50 ms") needs a name, and the name replaces the comment.
+4. **No sentinels.** None of these: `U32(0)` meaning "no surface", `.raw != U64(0)` meaning "has a handle", `-1` or `0xFFFFFFFF` meaning "not found", or `""` meaning "missing". Use `Optional<T>` (`.Some(v)`, `.None`), or an enum case that names the absence.
+5. **No `ok: Bool` structs.** `{ ok: Bool, value: ... }` and `{ ok: Bool, problem: String, ... }` are a `Result<Value, Failure>`.
+6. **No generic payload fields.** A message struct with fields `a`, `b`, `c`, `d` is forbidden. Decode each message once, at the wire, into an enum with one case per message. Each case carries a struct with named, typed fields: `.GrabFired(GrabEvent { key: Key, state: KeyState })`.
+7. **No integers as booleans or states.** `x != U32(0)` meaning true and `U32(1)` meaning pressed are forbidden. Decode into a `Bool`, or into an enum such as `KeyState { Released Pressed Repeated }`.
+8. **No `Bool` that selects behaviour.** A parameter like `track(surface, true)`, or a ternary like `desktop ? "Desktop" : "Application"`, is forbidden. Use an enum (`.Desktop`, `.Application`) and `match` on it, or write two functions.
+9. **Flags are typed.**
+   - Write `distinct Rights = U32` with its values in `namespace Rights { ... }`, and named operations such as `has`, `union` and `without`.
+   - Raw bit tests in logic, such as `(x & U32(0x80)) != U32(0)`, are forbidden.
+   - ORing `.raw` values happens only inside the flag type's own functions.
+10. **Numbers are `Number`.** Every quantity follows "Numbers: `Number` first". Never use `U64` for a size, time, date, count or offset because some syscall used one. A date is a struct of `Number` fields, never `var year: U64`.
+11. **IDs are `distinct`.** `distinct SurfaceId = U32` keeps a surface ID from being passed where a window ID belongs. `.raw` appears only at the wire.
+12. **Strings are not types.** Dispatch on a string compared in several places, such as `if name == "Notes"` or `parsed.command == "activity"`, is forbidden. Turn the string into an enum once, where it arrives, with one `match`, and use the enum everywhere else.
 
 ### Errors
 
-12. **Never swallow a failure.**
-    - These are forbidden:
-      - `let _ = f()` on a `Result`;
-      - a bare call that drops a `Result`;
-      - `Error(failed) -> U64(0)`, `Error(failed) -> ""`, `Error(failed) -> false` or any other default;
-      - `absorb` without a comment that says why ignoring is correct.
-    - At each call, either pass the failure up (`try`), handle it (a `match` that acts or logs with the failure), or fall back on purpose (`try f() otherwise value`).
-13. **Fallible functions return `Result`, not `Bool`.** `send(...) -> Bool`, `install(...) -> Bool` and `writeAll(...) -> Bool` lose why they failed. Return `Result<Value, Failure>`, with a failure enum whose cases name each reason.
-14. **No status codes in `Ok`.** `Result<U64, E>`, where the `U64` is a code the caller must also check, is forbidden. The `Error` side carries every failure.
-15. **Failure enums are specific.** Use `enum InstallFailure { NotSigned DiskFull(Int) Exists(String) }`, not a single `Failed(String)`, and never a number.
+13. **Fallible means `Result`.**
+    - A function that can fail returns `Result<Value, Failure>`. A `-> Bool` from `send`, `install`, `writeAll` or `open` throws away the reason, and is forbidden.
+    - Where Foundation answers a `Bool` or an `ok` field, check it at once and convert it into your failure enum.
+14. **Never swallow a failure.** All of these are forbidden:
+    - `let _ = f()` on a `Result` or on a `Bool` success flag;
+    - a bare call that drops one;
+    - `Error(failed) -> U64(0)`, `-> ""`, `-> false`, `-> []`, or any other made-up value;
+    - `absorb` without a comment that says why ignoring is correct.
+15. **No status codes in `Ok`.** `Result<U64, E>`, where the `U64` is a code the caller checks again, is forbidden. Every failure travels in `Error`. `.Ok` always carries a value, so return the value the call produced.
+16. **Failure enums are specific.** Write `enum InstallFailure { NotSigned DiskFull(Number) Exists(String) }`. A lone `Failed(String)`, or a number, is forbidden.
 
 ### Structure
 
-16. **No prefixed names.**
-    - `dkSurfaces`, `bsClients`, `ltShaUpdate`, `uiLetterFor`, `let duOpWatch: U32 = U32(5)`: a two- or three-letter program prefix on a name is forbidden.
-    - The package is already the namespace. Constants go in `namespace DiskOperation { let watch: ... }`. Operations become methods on the type they act on, through `extend Surface { ... }`.
-17. **No global mutable state.** `var dkSurfaces: [DkSurface] = []` at top level, reached by index from everywhere, is forbidden. Put the state in a struct, such as `struct Registry { var surfaces: [Surface] }`, owned by `main` and passed as `borrow mut`.
-18. **No constants behind functions.** `function pageSize() -> Int { return 4096 }` and zero-argument `@Native` constant functions are forbidden.
-    - A fixed value is a namespaced `let`.
-    - Settings and versions use `klist!`.
-    - A value worked out at run time is a function named for what it computes.
-19. **Constants live with their owner.** A system path such as `"/Applications"` or `"/Volumes/"`, a protocol size or an opcode table is declared once, in the library that owns it, and read from there. Never copy a literal path or number into a second file or package.
-20. **No copied helpers.** A helper that two packages need goes in the shared library, not into each package. Examples: reading a C string, page rounding, decimal text, argument decoding.
-21. **No `@Native` on ordinary functions.** It does nothing on a Kira function. The only annotations you may write are ones that do something: `@Main`, `@AtExit`, `@FFI.*`, `@Derive(...)`, `@Required`, `@MainThread`, `@Service` (Foundation only).
-22. **Raw memory only at the boundary.** Hand-computed offsets are forbidden in program logic. Examples: `heapLoad<U32>(block, Int(at + U64(12)))`, or field-by-field stores into a byte block.
-    - Declare the layout once as an `@FFI.Struct { layout: c }` and load or store it whole with `heapLoad<T>`/`heapStore<T>`.
-    - Alternatively, use the `Heap` library's `MemoryView`.
-    - Everything above that layer works with Kira structs.
-23. **Small functions, few parameters.** A function over about 60 lines is several functions. A function with six or more parameters takes a struct. Files stay under 700 lines and split by topic.
-24. **No trailing `return`** at the end of a function that returns nothing.
+17. **No prefixed names.** A two- or three-letter program prefix is forbidden: `dkSurfaces`, `bsClients`, `ltShaUpdate`, `uiLetterFor`, `let duOpWatch: U32 = U32(5)`.
+    - The package is already the namespace.
+    - Constants go in `namespace DiskOperation { let watch: ... }`, or become enum cases.
+    - Operations become methods on their type through `extend Surface { ... }`.
+18. **No global mutable state.** A top-level `var` is forbidden: arrays (`var dkSurfaces: [DkSurface] = []`), counters (`var bsNextKey: U64`) and flags (`var shellSystemLive: Bool`). State lives in a struct, such as `struct Registry { var surfaces: [Surface] }`, created in `main` and passed as `borrow mut`.
+19. **No constants behind functions.** `function pageSize() -> Int { return 4096 }` is a namespaced `let`. Versions and settings come from `klist!`. A function computes something, and is named for what it computes.
+20. **One home per constant.** A system path (`"/Applications"`, `"/Volumes/"`), a protocol size, an opcode table or a limit is declared once, in the library that owns it, and read from there. Never write the same literal in a second file or package.
+21. **No copied helpers.** Code two packages need lives once, in a shared library: C strings, page rounding, decimal text, argument decoding, protocol tables.
+22. **Raw memory stays at the boundary.**
+    - These are forbidden outside the single layer that talks to C, the kernel or hardware: `heapLoad`, `heapStore`, `heapAllocateRaw`, hand-computed offsets such as `heapLoad<U32>(block, Int(at + U64(12)))`, and `RawPtr`.
+    - In that layer, declare each layout once as an `@FFI.Struct { layout: c }`, and load or store it whole.
+    - Everything above that layer works with Kira structs and enums.
+23. **No `@Native` on Kira functions.** It does nothing. The annotations you write are `@Main`, `@AtExit`, `@MainThread`, `@Required`, `@Derive(...)` and `@FFI.*`. `@Service` is Foundation's own.
+24. **Small units.**
+    - A function stays under about 40 lines. Past that, it is several functions.
+    - More than four parameters means the function takes a struct.
+    - A file stays under 700 lines and splits by topic.
+    - A `match` arm longer than a few lines calls a function.
+25. **No trailing `return`** in a function that returns nothing.
+26. **Name the result, not the steps.** Name a function for what it answers or does to its subject: `volume.mount()`, `keyFromUsage(...)`. `handle`, `process`, `doWork` and `helper2` are forbidden.
 
 ### Control flow
 
-25. **`match`, not `if` chains.** Two or more `if x == ... else if x == ...` tests on one value are a `match`. Integers and strings match too. Use `return match x { ... }` when each arm yields a value.
-26. **`for`, not counters.**
-    - Wrong: `var i = 0`, then `while i < n { ...; i = i + 1 }`.
-    - Right: `for i in 0..n`.
-    - Iterate elements with `for item in items`, not `for i in 0..items.count { items[i] }`. Index only when you need the index to write back.
-27. **No flag loops.** Do not write `var running = true` with `while running { ... }`. Write `while true { ... }` and leave with `break` or `return`.
-28. **Use the expected type.** Write `.Case`, not `Enum.Case`, where the type is known.
+27. **Exhaustive matches on your own enums.**
+    - A `match` over an enum you declare lists every case.
+    - `else ->` is only for integers, strings and enums from another package.
+    - An empty arm (`else -> {}`, `System -> {}`) needs a comment above it saying why nothing happens.
+28. **`match`, not `if` chains.** Two or more `if x == ... else if x == ...` over one value are forbidden. Integers, strings and `Bool`s match too, and `return match x { ... }` yields a value.
+29. **`for`, not counters.**
+    - `var i = 0` with `while i < n { ...; i += 1 }` is forbidden. Use `for i in 0..n`.
+    - Walk elements with `for item in items`. `for i in 0..items.count { items[i] }` is forbidden unless the index is written back or compared.
+30. **No search flags.** A `var seen = false` or `var found = -1` filled by a loop is forbidden. Use `items.contains(x)`, or a function that answers `Optional<T>` and returns from inside the loop.
+31. **No flag loops.** `var running = true` with `while running { ... }` is forbidden. Use `while true { ... }` with `break` or `return`.
+32. **No sleep polling.** A loop that sleeps and checks again is forbidden when the platform offers a wait on an event, port, channel or signal: wait on that. When polling is unavoidable, name the interval as a constant, and log why.
+33. **Leading dot where the type is known.** Write `.Red`, not `Tone.Red`.
 
-### Output and input
+### Input and output
 
-29. **`log`, never `print`, for diagnostics.** Also never write a per-program logging wrapper (`dvLog`, `pwLog`). Pass values to `log` as fields, without converting them first: `log info("grabbed a key", key)`, not `key: Int(key)`. `print` is only for a command's real output to its user.
-30. **Command lines use `ArgumentParser`.** Hand-reading `processArgument(i)`, `envArgument(i)` or argument counts is forbidden. Declare a `ParsableCommand` and run it with `runCommand(...)`.
-31. **Use Foundation.** Before writing a helper, check whether Foundation already has it:
-    - maths: `sqrt`, `pow`, `min`, `max`, `clamp`, `abs`, `floor`;
-    - text: `.split`, `.trim`, `.startsWith`, `.endsWith`, `.contains`, `.indexOf`, `.substring`, `String(x)`;
-    - files: `readFile`, `writeFile`, `listDirectory`, `pathExists`;
-    - C strings: `stringFromCBytes`.
+34. **Diagnostics use `log`.** `print` is only for a command's own output to its user. Per-program logging wrappers (`dvLog`, `pwLog`) are forbidden.
+35. **Command lines use `ArgumentParser`.** Reading `processArgument(i)`, `envArgument(i)` or argument counts by hand is forbidden.
+    1. Add the library as a path dependency.
+    2. Declare a `ParsableCommand` with a `@Derive(Parsable)` arguments struct.
+    3. Run it with `runCommand(Command(), commandLineArguments())`.
+36. **Foundation before hand-written code.** If Foundation or a builtin does the job, writing your own is forbidden. That covers maths, text search, splitting, trimming, files, C strings and hashing.
 
 ### Naming and comments
 
-32. **Full-word names for what a thing is.** Write `openVolume`, `surfaces` and `KeyState`. Never write `vlTbl`, `tmp2`, `doIt` or `handleThing`.
-33. **Comments say why.** A comment that restates the code, or explains a magic number that should have been a name, is removed. The fix is the name.
+37. **Full words.** Write `openVolume`, `surfaces`, `KeyState` and `pressedAt`. Never `vlTbl`, `tmp2`, `buf`, `cnt` or `p2`.
+38. **Comments say why.** A comment that restates the code, narrates history, or explains a magic number that should be a name is forbidden. Delete it, or fix the name.
+39. **No dead code.** No commented-out code, no unused functions, and no function that returns `true` without doing the work.
 
-### Final check
+### Before you hand back code
 
-Before you hand back code:
+Every item must hold:
 
-- `kira check` is clean.
-- `grep` your change for `let _ =`, `U32(`, `U64(`, `@Native`, `print(`, `while ` and `== U`.
-- Every hit is either at the C or wire boundary, or gets fixed.
+1. `kira check .` is clean, and so is `kira check --test .` for a test package.
+2. `kira format --check .` lists nothing.
+3. Search your change for each of these. Every hit is fixed, or sits in the single C, wire or hardware boundary layer:
+   - `let _ =`
+   - `U32(`, `U64(`
+   - `@Native`
+   - `print(`
+   - `while `
+   - `== U`, `!= U`
+   - `heapLoad`, `heapStore`
+   - `else -> {}`
+   - `: Int` or `: Float` on a quantity (it should be `Number`)
+   - a top-level `var`
+   - a two- or three-letter name prefix
+4. Every new constant, enum and helper lives in the package that owns its concept.
 
 ## Tests
 
-A test package declares the `Test` family and a `TestRunner` collector. Copy them from klf-kira's `languages/kira/tests/app/`. A case looks like this:
+A test package carries the `Test` family and the `TestRunner` collector: copy `Test.kira` and `TestRunner.kira` from klf-kira's `languages/kira/tests/app/` into its `app/`. A case:
 
 ```kira
 construct SumsRange() extends Test {
@@ -249,12 +407,24 @@ construct SumsRange() extends Test {
 }
 ```
 
-`kira check --test <package>` checks the package and `kira build --test` builds it. A build with no tests is error 3371.
+- The measured value is returned as `Any`. The expectation's type is exactly `Result<Any, TestFailure>`.
+- Check the package with `kira check --test <package>`.
+- Build it with `kira build --test <package> -o tests`.
+- `./tests list` prints each case as `__kira_test_name__:<Name>`.
+- `./tests check <Name>` prints `__kira_test_result__:0` when the case passes, and a nonzero result when it fails.
+- A `--test` build of a package with no `Test` cases is error 3371.
 
 ## When something fails
 
-- Read the code and the message. `docs/diagnostics.md` in klf-kira lists every code.
-- 9001: either the construct is outside the subset (`T?`, `import A.B`, an annotation with arguments), or a declaration is missing. Usually the missing declaration is `import Foundation`.
-- 3061 is an undefined function. Check Foundation for the real name before you invent one, for example with `grep -rn "function name" ~/.klf/toolchains/kira/dev/*/`.
-- 3394: the `Error` arm must bind its failure and use it.
-- 3021 or 3025: you mutated a `let`. Use `var`, or pass the value as `borrow mut`.
+Read the message, then the code. klf-kira's `docs/diagnostics.md` lists every code.
+
+| Code | Meaning | Fix |
+| --- | --- | --- |
+| 9001 | The construct is outside the subset (`T?`, `import A.B`, an annotation with arguments), or a declaration is missing. | Most often, add `import Foundation`. |
+| 3061, 3060, 3050, 3091 | Undefined function, name, type or field. | Look in the installed `std/` for the real name. Never guess. |
+| 3021, 3025 | You mutated a `let`. | Use `var`, or pass `borrow mut`. |
+| 3071, 3183 | Operand or argument types differ, often `Int` and `Number`. | Convert once, at the edge. |
+| 3394 | The `Error` arm drops its failure. | Bind the failure and use it. |
+| 4003 | Unknown manifest member. | Fix the member's name. |
+| 4033 | No library for an import. | Add a path dependency. |
+| 3372 | An `@FFI.Extern` names a library `nativeLibraries` does not declare. | Declare it in `nativeLibraries`. |
