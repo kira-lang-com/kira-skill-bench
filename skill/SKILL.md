@@ -18,7 +18,9 @@ The compiler is `kira`, the Kira language defined in `.klfd` files (the klf-kira
 - `kira check <path>` reports diagnostics and writes nothing. Run it after every edit.
   - `<path>` is a package directory, its `package.kira`, or any file in it. Use `kira check .` inside a package.
   - The path is required.
-- `kira run <path> [-- args]` builds an executable and runs it.
+- `kira run [<path>] [-- args]` builds an executable and runs it.
+- `kira test [<path>]` builds the package's tests and runs them. It prints `ok   <Name>` or `FAIL <Name>` for each case, then a summary line: `1 passed, 0 failed, 0 skipped, 1 total`. It exits 1 when any case fails. `kira help` does not list `test`, but it exists.
+- With `run` and `test`, a path left out means the package in the current directory.
 - `kira build <path> -o out` builds.
   - `-o`'s extension, or `--emit kir|klbc|bin|lib|shared|ridl|run`, chooses the output.
   - `--target <triple>` cross-compiles.
@@ -31,7 +33,7 @@ The compiler is `kira`, the Kira language defined in `.klfd` files (the klf-kira
   - `knvm binstall` builds the klf-kira checkout you are in and installs it as the dev toolchain.
   - `knvm sinstall` installs `knvm` and the launchers onto PATH.
   - The `kira` launcher runs the installed toolchain. After changing the compiler, rerun `knvm binstall`.
-- `kira test`, `kira lint` and `--backend` do not exist.
+- `kira lint` and `--backend` do not exist.
 - Diagnostics are numeric, such as `error[3025]`. The thousands band is the phase: 1xxx lexer, 2xxx parser, 3xxx semantics, 4xxx packages, 5xxx macros.
   - 9001 means "outside the supported subset", or a missing declaration, most often no `import Foundation`.
   - klf-kira's `languages/kira/docs/diagnostics.md` lists every code.
@@ -376,7 +378,7 @@ Every rule forbids a pattern found in existing Kira code. Each one applies to ev
 
 Every item must hold:
 
-1. `kira check .` is clean, and so is `kira check --test .` for a test package.
+1. `kira check .` is clean, and `kira test .` ends with `0 failed` for a package with tests.
 2. `kira format --check .` lists nothing.
 3. Search your change for each of these. Every hit is fixed, or sits in the single C, wire or hardware boundary layer:
    - `let _ =`
@@ -408,10 +410,8 @@ construct SumsRange() extends Test {
 ```
 
 - The measured value is returned as `Any`. The expectation's type is exactly `Result<Any, TestFailure>`.
-- Check the package with `kira check --test <package>`.
-- Build it with `kira build --test <package> -o tests`.
-- `./tests list` prints each case as `__kira_test_name__:<Name>`.
-- `./tests check <Name>` prints `__kira_test_result__:0` when the case passes, and a nonzero result when it fails.
+- Run the tests with `kira test <package>`. It must end with `0 failed`, and it exits 1 otherwise.
+- `kira check --test <package>` checks the tests without running them.
 - A `--test` build of a package with no `Test` cases is error 3371.
 
 ## When something fails
