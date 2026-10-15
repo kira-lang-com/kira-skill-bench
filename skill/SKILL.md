@@ -91,7 +91,9 @@ function total(prices: borrow [Price]) -> Number {
 }
 ```
 
-- **Annotate it.** A bare literal is an `Int` or a `Float`: `let n = 3` is an `Int`. Write `let n: Number = 3`, `var sum: Number = 0` or `let rate: Number = 0.25`. A literal passed to a `Number` parameter, or written into a `Number` field, becomes a `Number` without help.
+- **Literals are `Number`.** With Foundation imported, `let n = 3` and `let rate = 0.25` are `Number`s; `n / 2` is `1.5`.
+- **Counts are `Number`.** `items.count`, `text.count`, a `for` counter over Number bounds (`for i in 0..items.count`), the index of `enumerated()`, `charAt` and `indexOf` are all `Number`s: `items.count / 2` is `1.5` for three items. A value is an `Int` only where you declare one, and a loop with an `Int` bound counts in `Int`.
+- **`UNumber`** is the same type, written where a value is never negative (a size, a count, a time). It says so at the declaration.
 - **Operators:**
   - `+ - * / %`, comparisons, `+=`, `-=`, `++` and unary `-` all work.
   - `& | ^ ~ << >>` work on whole values and trap on a fraction.
@@ -101,17 +103,18 @@ function total(prices: borrow [Price]) -> Number {
   - `Int(n)`, `U32(n)` and the other widths truncate toward zero, and trap outside their range.
   - `String(n)` is the decimal text, and `Float(n)` the nearest float.
   - A hexadecimal literal where a `Number` is expected names a `U64`'s bits: `0xffffffffffffffff` is `18446744073709551615`.
-- **Where Kira needs another type, and only there:**
-  - `for` range bounds, array indexes and `.count` are `Int`. Convert once: `for i in 0..Int(limit)`, `Number(items.count)`.
-  - `Int` and `Number` never mix in one expression (error 3071).
-  - `match` cannot take a `Number` (error 3125). Compare with `<` and `==`, or `match` on an enum the number decodes to.
-  - A C layout, a syscall, a wire format or a hardware register takes the fixed width it declares (`U32`, `U64`, `I32`...). Convert at that call and nowhere else.
-  - A parameter that a library declares as `Int`, `Float` or `F32` gets that type at the call.
+- **Mixing:**
+  - An `Int` and a `Number` mix in one expression; the `Int` widens.
+  - A `Number` passed to a fixed-width parameter or field (`U32`, `U64`, `Int`...) narrows there, range-checked, without a call. A fixed-width value read into a `Number` widens the same way.
+  - A `for` bound and an array index may be a whole `Number`.
+  - `match` takes a `Number`: `match price { 0..10 -> ... 19.99 -> ... else -> ... }`.
+- **Where a fixed width belongs, and only there:** a C layout, a syscall, a wire format or a hardware register. That code lives in the library that owns the boundary, which converts inside itself.
+- **Library surfaces take `Number`.** A public function or struct field holding a count, size, time, offset or code is `Number` or `UNumber`, never `U32` or `U64`. Callers never write a fixed width.
 - **Foundation functions:** `sqrt`, `min`, `max` and `abs` take `Number`.
-- **Logging:** a trail shows a `Number` field as `<number>`, so log it as text: `log info("charged", amount: String(amount))`.
-- **Libraries:** a public `Number` constant crosses RIDL when its mantissa fits an `Int`.
+- **Logging:** `log` writes a `Number` field as decimal text: `log info("charged", amount)`.
+- **Libraries:** `Number` crosses RIDL as `struct Number`, so it is the type of every numeric parameter, result and field of a library.
 
-`Int` is for indexes, loop positions and collection sizes. `Float` and `F32` are for APIs that demand them, such as graphics. Fixed-width integers belong at a binary boundary. Never pick `Int`, `Float` or `U64` "because it is simpler".
+`Float` and `F32` are for APIs that demand them, such as graphics. Fixed-width integers belong inside the one layer that talks to C, the kernel, hardware or a wire. Never pick `Int`, `Float` or `U64` "because it is simpler".
 
 ## The language
 
@@ -124,7 +127,7 @@ function total(prices: borrow [Price]) -> Number {
 - **Types:**
   - `Number`, `Int` (64-bit signed), `Float` (64-bit), `Bool`, `Void` and `RawPtr`.
   - Fixed widths are `I8 I16 I32 U8 U16 U32 U64 F32`. There is no `I64`: use `Int`.
-  - Foundation adds `String`, `Any`, `[T]`, `Optional<T>` and `Result<T, E>`.
+  - Foundation adds `String`, `Any`, `[Any]`, `Optional<Any>` and `Result<Any, Failure>`.
   - Widths never mix: convert with a call, which traps when the value does not fit. Integer arithmetic traps on overflow.
 - **Separators:**
   - Kira has no semicolons (error 1005). Statements, fields, enum cases and match arms are separated by newlines.
@@ -133,10 +136,10 @@ function total(prices: borrow [Price]) -> Number {
   - Arithmetic, bitwise, comparison, `&& || !` and `cond ? a : b`.
   - `+= -= *= /=` and `i++`.
   - `+` concatenates strings. `String(x)` turns a `Number`, an integer, a `Float` or a `Bool` into text.
-  - There is no string interpolation: `"\(x)"` is error 1003.
+  - Interpolation, `"\(name) has \(count) items"`, writes a `String` as itself and any other value as a trail shows it. Prefer it to chains of `+` and `String(...)`.
 - **Loops:**
   - `for i in 0..n` runs over a half-open `Int` range.
-  - `for item in items` binds each element. There is no `enumerated()` and no tuple pattern (error 2012).
+  - `for item in items` binds each element. `for (index, item) in items.enumerated()` binds both.
   - `while cond` and `while true` work.
   - `break` and `continue` work, including inside a `match` arm.
 - **Structs and classes:**
@@ -147,20 +150,22 @@ function total(prices: borrow [Price]) -> Number {
   - A method cannot declare its own type parameters (error 2047). A method of a generic struct uses the struct's.
   - `class` has reference storage. Bind it with `var` to call a `borrow mut self` method.
 - **Enums:**
-  - Cases are separated by whitespace, and each carries at most one payload, `Case(Type)`.
-  - Generic enums and structs work: `Optional<Value>` with `.Some(v)` and `.None`, and `Result<Value, Failure>` with `.Ok(v)` and `.Error(f)`.
-  - The `T?` shorthand is error 9001.
+  - Cases are separated by whitespace, and each carries at most one payload, `Case(Type)`. Named fields go in a struct payload: `CheckIn(CheckIn)` with `struct CheckIn { let name: String }`.
+  - `Optional<Value>` with `.Some(v)` and `.None`; `Value?` is its shorthand. `Result<Value, Failure>` with `.Ok(v)` and `.Error(f)`; `Result<Void, Failure>` succeeds with a bare `.Ok`.
+  - Stable codes are raw values: `enum Key: U32 { Escape = 41  F12 = 69 }`. `code(key)` and `fromCode<Key>(raw)` convert at the boundary.
+  - `@Open` on such an enum keeps an unknown code: `fromCode` answers a value no case names, `code` gives the code back, and a `match` needs `else ->`.
+- **`Any`, not `T`.** Kira writes `Any` where another language declares a type parameter `T`: `function first(values: [Any]) -> Any?`, `struct Slot { let held: Any }`. Do not declare type parameters for your own code; test and unwrap with `is` and `as`.
 - **`match`:**
   - It takes an enum, an integer, a `Bool` or a `String`, and must be exhaustive.
   - Arms name cases unqualified, as `Case(binding) -> ...`. `else ->` covers the rest (but see rule 27).
   - `match` is an expression: `return match x { ... }`.
 - **Leading dot:** `.Case` resolves where the expected type is known. That means an annotation, a parameter, a return, a struct field, an array element, the other side of `==`, or an outer payload. With no expected type, it is error 3119.
-- **Traits:** `trait Name { function f() -> T }`, then `struct S: Name { ... }`. A trait's bare name in a type position is its existential: `-> Greeter`.
+- **Traits:** `trait Name { function f() -> Type }`, then `struct S: Name { ... }`. A trait's bare name in a type position is its existential: `-> Greeter`.
 - **Construct families:**
-  - `construct Family { @Required function f() -> T }` declares a family.
+  - `construct Family { @Required function f() -> Type }` declares a family.
   - `Family Member { ... }` declares a member, and `Member()` builds its value.
   - `Any Family` is the family's existential.
-- **Namespaces:** `namespace Name { let member: T = value }` holds constants, read as `Name.member`.
+- **Namespaces:** `namespace Name { let member: Type = value }` holds constants, read as `Name.member`.
   - `public namespace` exports every member.
   - A constant `let` is folded in place, with no load and no initializer.
 - **Distinct types and aliases:**
@@ -168,11 +173,11 @@ function total(prices: borrow [Price]) -> Number {
   - `type Name = Target` is a nominal alias.
 - **Ownership** is affine: a non-Copy value moves on use.
   - Pass `move value` to an owned parameter.
-  - A parameter that only reads is `borrow T`. One that writes is `borrow mut T`, and the caller passes a `var`.
+  - A parameter that only reads is `borrow Type`. One that writes is `borrow mut Type`, and the caller passes a `var`.
   - `copy value` makes an explicit copy.
 - **Lambdas:** `{ x in ... }`, typed by a function type: `let g: (Int) -> Int = { x in return x + 1 }`. A lambda captures `let`s by value and `var`s by a shared cell.
 - **Tasks:** `async function f(...)` is a task entry. Start it with `let h = Task { f(1, 2) }` and join it with `h.await`.
-- **Channels:** `Channel<T>()` returns the sender, and `.receiver` is the other end.
+- **Channels:** `Channel<Type>()` returns the sender, and `.receiver` is the other end.
   - `tx.send(v)` sends and `tx.close()` closes.
   - Receive with `let v = try rx.receive()` inside `attempt`, and handle `Closed`.
 - **Main thread:** an `@MainThread function` is reached only through:
@@ -199,28 +204,28 @@ function total(prices: borrow [Price]) -> Number {
 
 ## Builtins
 
-These need no import and no declaration. Never declare a function with a builtin's name: for `code`, `compare` and `hash`, your declaration silently replaces the builtin.
+These need no import and no declaration. A function, method or binding named `code`, `compare`, `hash`, `print` or `traceText` is error 2099.
 
 | Builtin | What it does |
 | --- | --- |
-| `print(v)` | Writes a `String`, integer, `Float` or `Bool` and a newline. Only for a program's real output. |
+| `print(v)` | Writes any value and a newline; aggregates as a trail shows them. Only for a program's real output. |
 | `log`, `log fault/warn/info/debug/trace(...)` | Records an event (see Logging). |
 | `traceText(v)` | Any value as readable text: `Point { x: 1, y: 2 }`, `Tone.Label("x")`. |
 | `code(e)`, `fromCode<E>(n)` | An enum case's index, and back. `fromCode` takes payload-less enums only. |
 | `compare(a, b)` | `Ordering`: `.Less`, `.Equal` or `.Greater`. |
 | `hash(v)` | A hash that agrees with `==`. |
-| `T(x)` conversions | `Number(x)`, `Int(x)`, `U8(x)`..., `Float(x)`, `String(x)`, and `Metres(x)` for a distinct type. Narrowing traps when the value does not fit. |
-| `v is T`, `v as T` | Tests and unwraps an `Any`. |
+| `Type(x)` conversions | `Number(x)`, `Int(x)`, `U8(x)`..., `Float(x)`, `String(x)`, and `Metres(x)` for a distinct type. Narrowing traps when the value does not fit. |
+| `v is Type`, `v as Type` | Tests and unwraps an `Any`. |
 | `wrappingAdd`, `wrappingSub`, `wrappingMul` | Arithmetic that wraps at the operands' width instead of trapping. Only for hashes, checksums and sequence numbers. |
 | `floatToBits(f)`, `bitsToFloat(u)` | A `Float`'s IEEE bits as a `U64`, and back. |
 | `runtimeTrap()` | Stops the program with a trap. |
 | `Build.debug()`, `Build.release()` | The build mode, as constants, anywhere. |
 | `Build.platform()`, `Build.target()`, `Build.testing()`, `Build.linting()` | Only inside a `comptime function` or a macro. Elsewhere they are error 3060. |
-| `Task { f(...) }`, `.await`, `.requestCancel()`, `.detach()`, `Channel<T>()`, `MainThread.invoke/spawn/post` | Concurrency (see above). |
+| `Task { f(...) }`, `.await`, `.requestCancel()`, `.detach()`, `Channel<Type>()`, `MainThread.invoke/spawn/post` | Concurrency (see above). |
 | `klist!`, `ksl!` | Embedded files (see above). |
-| `nativeState(v)`, `nativeUserData(s)`, `nativeStateValue(token) as T` | Hand a Kira value to C as an opaque word, and get it back. |
-| `sizeOf<T>()`, `alignOf<T>()` | The C size and alignment of a C-shaped type. |
-| `heapAllocateRaw(bytes, align)`, `heapFreeRaw(p)`, `heapLoad<T>(p[, offset])`, `heapStore<T>(p, [offset,] v)`, `heapOffset(p, n)`, `heapCopyBytes`, `heapMoveBytes`, `heapFillBytes`, `heapReadByte`, `heapWriteByte`, `heapReadInt`, `heapWriteInt`, `rawPointerWord(p)` | Raw memory, only in the one layer that talks to C, the kernel or hardware (rule 22). `heapAllocateRaw` does not zero. Typed loads take only C-shaped types (error 3397). |
+| `nativeState(v)`, `nativeUserData(s)`, `nativeStateValue(token) as Type` | Hand a Kira value to C as an opaque word, and get it back. |
+| `sizeOf<Type>()`, `alignOf<Type>()` | The C size and alignment of a C-shaped type. |
+| `heapAllocateRaw(bytes, align)`, `heapFreeRaw(p)`, `heapLoad<Type>(p[, offset])`, `heapStore<Type>(p, [offset,] v)`, `heapOffset(p, n)`, `heapCopyBytes`, `heapMoveBytes`, `heapFillBytes`, `heapReadByte`, `heapWriteByte`, `heapReadInt`, `heapWriteInt`, `rawPointerWord(p)` | Raw memory, only in the one layer that talks to C, the kernel or hardware (rule 22). `heapAllocateRaw` does not zero. Typed loads take only C-shaped types (error 3397). |
 
 Foundation (`import Foundation`) provides:
 - maths: `sqrt`, `pow`, `min`, `max`, `clamp`, `abs`, `floor`, `ceil`, `round`, `sin`, `cos` and the rest;
@@ -270,7 +275,7 @@ An `Error(_)` arm, or an `else` arm standing for `Error`, is error 3394. The com
 `log` is a statement. Diagnostics never go through `print` or through a wrapper of your own.
 
 ```kira
-log info("opened the volume", path, size: String(size))
+log info("opened the volume", path, size)
 log warn("could not open the volume", path, failure)
 log fault("the table is corrupt", entries)
 ```
@@ -278,8 +283,7 @@ log fault("the table is corrupt", entries)
 - **Levels:** `fault`, `warn`, `info` (the default), `debug` and `trace`.
 - **Message:** `fault` and `warn` start with a string literal message (error 2095).
 - **Fields** are named by their label or their source text. A literal needs a label (error 2096): `log("sent", bytes: 4)`.
-  - Pass values as they are, without converting them for the log.
-  - The one exception is a `Number`, which you log as `String(n)`.
+  - Pass values as they are, `Number`s included, without converting them for the log.
 - **Output:** `KIRA_LOG` chooses what prints: `off`, `warn`, `info`, `trace`, or per module, as in `Shop=trace`. Unset, a program prints `info` and above.
 
 ## Rules
@@ -291,20 +295,26 @@ Every rule forbids a pattern found in existing Kira code. Each one applies to ev
 1. **No integer stand-ins.** A kind, role, opcode, key, button, state, mode, reason, command, message type or result code is never an `Int`, `U32` or `U64`. Declare an `enum`.
    - Wrong: `if message.a == U32(69) { ... }   // 69 is F12`
    - Right: `match key { F12 -> ... }`
-2. **An open set is an enum with a catch-all.**
-   - Keyboard keys, device classes, protocol versions and anything else that can grow get one case per known value, plus `Other(U32)` for unknown codes.
+2. **An open set is an `@Open` enum.**
+   - Keyboard keys, device classes, protocol versions and anything else that can grow are `@Open enum Key: U32 { Escape = 41  F12 = 69 ... }`: one case per known code, and an unknown code survives `fromCode` and `code` unchanged.
    - A raw code is converted to the enum once, where it is read, and back once, where it is written. Both conversion functions sit at that boundary.
 3. **No magic numbers.** Every literal other than 0, 1 or a value obvious in place (`count * 2`) is an enum case or a namespaced constant. A literal that needs a comment to say what it is ("usage 104", "opcode 5", "50 ms") needs a name, and the name replaces the comment.
-4. **No sentinels.** None of these: `U32(0)` meaning "no surface", `.raw != U64(0)` meaning "has a handle", `-1` or `0xFFFFFFFF` meaning "not found", or `""` meaning "missing". Use `Optional<T>` (`.Some(v)`, `.None`), or an enum case that names the absence.
+   - A value that follows from others is computed from them, never written out: a program slot of `256 - 24` bytes is `messageBytes - programOffset`, not `232`.
+   - A real limit is named once, in the package that owns it, with a comment saying where it comes from.
+4. **No sentinels.** None of these: `U32(0)` meaning "no surface", `.raw != U64(0)` meaning "has a handle", `-1` or `0xFFFFFFFF` meaning "not found", or `""` meaning "missing". Use `Value?` (`.Some(v)`, `.None`), or an enum case that names the absence.
 5. **No `ok: Bool` structs.** `{ ok: Bool, value: ... }` and `{ ok: Bool, problem: String, ... }` are a `Result<Value, Failure>`.
-6. **No generic payload fields.** A message struct with fields `a`, `b`, `c`, `d` is forbidden. Decode each message once, at the wire, into an enum with one case per message. Each case carries a struct with named, typed fields: `.GrabFired(GrabEvent { key: Key, state: KeyState })`.
+6. **Messages are enums.** A message struct with fields `a`, `b`, `c`, `d`, or a protocol of opcodes, offsets and slot sizes, is forbidden.
+   - A protocol is one enum with one case per message. Each case carries a struct with named, typed fields: `.GrabFired(GrabEvent { key: Key, state: KeyState })`, `.CheckIn(CheckIn { name: String })`. The case is the opcode.
+   - The library that owns the protocol encodes and decodes it, once. Every other package sends and matches the enum and never sees bytes.
+   - Strings and arrays travel with their length. A fixed-size block with fixed-size text slots (a 96-byte name, a 232-byte program) is forbidden.
+   - A layout written out in a second package, or in a comment, is forbidden. The encoder is the only description of the bytes.
 7. **No integers as booleans or states.** `x != U32(0)` meaning true and `U32(1)` meaning pressed are forbidden. Decode into a `Bool`, or into an enum such as `KeyState { Released Pressed Repeated }`.
 8. **No `Bool` that selects behaviour.** A parameter like `track(surface, true)`, or a ternary like `desktop ? "Desktop" : "Application"`, is forbidden. Use an enum (`.Desktop`, `.Application`) and `match` on it, or write two functions.
 9. **Flags are typed.**
    - Write `distinct Rights = U32` with its values in `namespace Rights { ... }`, and named operations such as `has`, `union` and `without`.
    - Raw bit tests in logic, such as `(x & U32(0x80)) != U32(0)`, are forbidden.
    - ORing `.raw` values happens only inside the flag type's own functions.
-10. **Numbers are `Number`.** Every quantity follows "Numbers: `Number` first". Never use `U64` for a size, time, date, count or offset because some syscall used one. A date is a struct of `Number` fields, never `var year: U64`.
+10. **Numbers are `Number`.** Every quantity follows "Numbers: `Number` first", and `UNumber` when it is never negative. Never use `U64` for a size, time, date, count or offset because some syscall used one. A library's public functions and fields take `Number` and convert to fixed widths inside the library. A date is a struct of `Number` fields, never `var year: U64`.
 11. **IDs are `distinct`.** `distinct SurfaceId = U32` keeps a surface ID from being passed where a window ID belongs. `.raw` appears only at the wire.
 12. **Strings are not types.** Dispatch on a string compared in several places, such as `if name == "Notes"` or `parsed.command == "activity"`, is forbidden. Turn the string into an enum once, where it arrives, with one `match`, and use the enum everywhere else.
 
@@ -354,7 +364,7 @@ Every rule forbids a pattern found in existing Kira code. Each one applies to ev
 29. **`for`, not counters.**
     - `var i = 0` with `while i < n { ...; i += 1 }` is forbidden. Use `for i in 0..n`.
     - Walk elements with `for item in items`. `for i in 0..items.count { items[i] }` is forbidden unless the index is written back or compared.
-30. **No search flags.** A `var seen = false` or `var found = -1` filled by a loop is forbidden. Use `items.contains(x)`, or a function that answers `Optional<T>` and returns from inside the loop.
+30. **No search flags.** A `var seen = false` or `var found = -1` filled by a loop is forbidden. Use `items.contains(x)`, or a function that answers an optional and returns from inside the loop.
 31. **No flag loops.** `var running = true` with `while running { ... }` is forbidden. Use `while true { ... }` with `break` or `return`.
 32. **No sleep polling.** A loop that sleeps and checks again is forbidden when the platform offers a wait on an event, port, channel or signal: wait on that. When polling is unavoidable, name the interval as a constant, and log why.
 33. **Leading dot where the type is known.** Write `.Red`, not `Tone.Red`.
@@ -389,21 +399,23 @@ Every item must hold:
    - `== U`, `!= U`
    - `heapLoad`, `heapStore`
    - `else -> {}`
-   - `: Int` or `: Float` on a quantity (it should be `Number`)
+   - `: Int`, `: Float`, `: U32` or `: U64` on a quantity (it should be `Number` or `UNumber`)
+   - a type parameter `<T>` (it should be `Any`)
+   - a byte offset or slot size outside the encoder that owns it
    - a top-level `var`
    - a two- or three-letter name prefix
 4. Every new constant, enum and helper lives in the package that owns its concept.
 
 ## Tests
 
-A test package carries the `Test` family and the `TestRunner` collector: copy `Test.kira` and `TestRunner.kira` from klf-kira's `languages/kira/tests/app/` into its `app/`. A case:
+Foundation holds the `Test` family and the `TestRunner` collector, so a test package only writes `import Foundation`. Never copy a `Test.kira` or `TestRunner.kira` into a package. A case:
 
 ```kira
 construct SumsRange() extends Test {
     test {
-        var s = 0
-        for i in 0..5 { s += i }
-        return s
+        var sum = 0
+        for value in 0..5 { sum += value }
+        return sum
     }
     expect { let e: Result<Any, TestFailure> = .Ok(10) return e }
 }
@@ -420,11 +432,12 @@ Read the message, then the code. klf-kira's `docs/diagnostics.md` lists every co
 
 | Code | Meaning | Fix |
 | --- | --- | --- |
-| 9001 | The construct is outside the subset (`T?`, `import A.B`, an annotation with arguments), or a declaration is missing. | Most often, add `import Foundation`. |
+| 9001 | The construct is outside the subset (`import A.B`, an annotation with arguments), or a declaration is missing. | Most often, add `import Foundation`. |
 | 3061, 3060, 3050, 3091 | Undefined function, name, type or field. | Look in the installed `std/` for the real name. Never guess. |
 | 3021, 3025 | You mutated a `let`. | Use `var`, or pass `borrow mut`. |
-| 3071, 3183 | Operand or argument types differ, often `Int` and `Number`. | Convert once, at the edge. |
+| 3071, 3183 | Operand or argument types differ. | Fix the declared type; convert only at a C, kernel or wire boundary. |
 | 3394 | The `Error` arm drops its failure. | Bind the failure and use it. |
+| 2099 | A function, method or binding takes a builtin's name. | Rename it. |
 | 4003 | Unknown manifest member. | Fix the member's name. |
 | 4033 | No library for an import. | Add a path dependency. |
 | 3372 | An `@FFI.Extern` names a library `nativeLibraries` does not declare. | Declare it in `nativeLibraries`. |
