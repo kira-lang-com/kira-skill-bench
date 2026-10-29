@@ -1,0 +1,19 @@
+import FlagKit
+
+function enabledFlag() -> Bool {
+    return makeFlagKit().read("enabled")
+}
+
+function describeEnabled() -> String {
+    if enabledFlag() {
+        return "on"
+    } else {
+        return "off"
+    }
+}
+
+@Main
+function main() {
+    print(describeEnabled())
+    return
+}

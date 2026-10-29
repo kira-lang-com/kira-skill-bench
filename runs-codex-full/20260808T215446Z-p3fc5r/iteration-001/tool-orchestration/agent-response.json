@@ -1,0 +1,3 @@
+{
+  "kira": "function totalIssuePoints() -> Int {\n    let tools = makeKiraTools()\n    let issues = tools.github.searchIssues(repo: \"kira-lang/kira\", query: \"LLVM\")\n    var total = 0\n    for issue in issues {\n        let detail = tools.github.getIssue(id: issue.id)\n        total = total + detail.points\n    }\n    return total\n}\n\n@Main\nfunction main() {\n    print(totalIssuePoints())\n    return\n}"
+}

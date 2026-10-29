@@ -1,0 +1,68 @@
+import Foundation
+
+// evaluator-preloaded fictional library: KiraTools
+struct ToolIssue {
+    let id: Int;
+    let title: String;
+}
+
+struct ToolDetail {
+    let id: Int;
+    let points: Int;
+}
+
+struct GitHubTools {
+    function searchIssues(repo: String, query: String) -> [ToolIssue] {
+        var issues: [ToolIssue] = []
+        issues.append(ToolIssue { id: 101; title: "LLVM backend" })
+        issues.append(ToolIssue { id: 202; title: "Kira benchmark" })
+        return issues
+    }
+
+    function getIssue(id: Int) -> ToolDetail {
+        if id == 101 {
+            return ToolDetail { id: 101; points: 8 }
+        }
+
+        return ToolDetail { id: 202; points: 13 }
+    }
+}
+
+struct KiraTools {
+    let github: GitHubTools;
+}
+
+function makeKiraTools() -> KiraTools {
+    return KiraTools { github: GitHubTools {} }
+}
+
+function totalIssuePoints() -> Int {
+    let tools = makeKiraTools()
+    let issues = tools.github.searchIssues(repo: "kira-lang/kira", query: "LLVM")
+    var total = 0
+
+    for issue in issues {
+        let detail = tools.github.getIssue(id: issue.id)
+        total = total + detail.points
+    }
+
+    return total
+}
+
+@Main
+function main() {
+    print(totalIssuePoints())
+    return
+}
+
+// evaluator-hidden-tests
+Test ToolCallsUseEveryIssue {
+    test {
+        return totalIssuePoints()
+    }
+
+    expect {
+        let expected: Result<Int, TestFailure> = .Ok(21)
+        return expected
+    }
+}

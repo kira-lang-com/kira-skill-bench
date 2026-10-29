@@ -1,0 +1,57 @@
+import Foundation
+
+// evaluator-preloaded fictional library: FlagKit
+struct FlagKit {
+    function read(name: String) -> Bool {
+        if name == "enabled" {
+            return true
+        }
+
+        return false
+    }
+}
+
+function makeFlagKit() -> FlagKit {
+    return FlagKit {}
+}
+
+function enabledFlag() -> Bool {
+    return makeFlagKit().read("enabled")
+}
+
+function describeEnabled() -> String {
+    if enabledFlag() {
+        return "on"
+    } else {
+        return "off"
+    }
+}
+
+@Main
+function main() {
+    print(describeEnabled())
+    return
+}
+
+// evaluator-hidden-tests
+Test FlagAdapterReadsEnabled {
+    test {
+        return enabledFlag()
+    }
+
+    expect {
+        let expected: Result<Bool, TestFailure> = .Ok(true)
+        return expected
+    }
+}
+
+Test FlagAdapterDescribesEnabled {
+    test {
+        return describeEnabled()
+    }
+
+    expect {
+        let expected: Result<String, TestFailure> = .Ok("on")
+        return expected
+    }
+}

@@ -1,0 +1,47 @@
+{
+  "caseId": "fictional-library-adapter",
+  "title": "A tiny adapter around a made-up FlagKit library",
+  "iteration": 1,
+  "attempt": 1,
+  "passed": true,
+  "commands": [
+    {
+      "command": [
+        "kira",
+        "check",
+        "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\fictional-library-adapter\\project"
+      ],
+      "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\fictional-library-adapter\\project",
+      "exitCode": 0,
+      "timedOut": false,
+      "stdout": "ok: C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\fictional-library-adapter\\project\n",
+      "stderr": "",
+      "durationMs": 220
+    },
+    {
+      "command": [
+        "kira",
+        "test"
+      ],
+      "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\fictional-library-adapter\\project",
+      "exitCode": 0,
+      "timedOut": false,
+      "stdout": "ok   FlagAdapterReadsEnabled\nok   FlagAdapterDescribesEnabled\n2 passed, 0 failed, 0 skipped, 2 total\n",
+      "stderr": "",
+      "durationMs": 203
+    }
+  ],
+  "response": {
+    "kira": "import FlagKit\n\nfunction enabledFlag() -> Bool {\n    let flags = makeFlagKit()\n    return flags.read(\"enabled\")\n}\n\nfunction describeEnabled() -> String {\n    if enabledFlag() {\n        return \"on\"\n    } else {\n        return \"off\"\n    }\n}\n\n@Main function main() {\n    print(describeEnabled())\n    return\n}"
+  },
+  "source": "import FlagKit\n\nfunction enabledFlag() -> Bool {\n    let flags = makeFlagKit()\n    return flags.read(\"enabled\")\n}\n\nfunction describeEnabled() -> String {\n    if enabledFlag() {\n        return \"on\"\n    } else {\n        return \"off\"\n    }\n}\n\n@Main function main() {\n    print(describeEnabled())\n    return\n}",
+  "responseText": "import FlagKit\n\nfunction enabledFlag() -> Bool {\n    let flags = makeFlagKit()\n    return flags.read(\"enabled\")\n}\n\nfunction describeEnabled() -> String {\n    if enabledFlag() {\n        return \"on\"\n    } else {\n        return \"off\"\n    }\n}\n\n@Main function main() {\n    print(describeEnabled())\n    return\n}",
+  "preparedSource": "import Foundation\n\n// evaluator-preloaded fictional library: FlagKit\nstruct FlagKit {\n    function read(name: String) -> Bool {\n        if name == \"enabled\" {\n            return true\n        }\n\n        return false\n    }\n}\n\nfunction makeFlagKit() -> FlagKit {\n    return FlagKit {}\n}\n\nfunction enabledFlag() -> Bool {\n    let flags = makeFlagKit()\n    return flags.read(\"enabled\")\n}\n\nfunction describeEnabled() -> String {\n    if enabledFlag() {\n        return \"on\"\n    } else {\n        return \"off\"\n    }\n}\n\n@Main function main() {\n    print(describeEnabled())\n    return\n}\n\n// evaluator-hidden-tests\nTest FlagAdapterReadsEnabled {\n    test {\n        return enabledFlag()\n    }\n\n    expect {\n        let expected: Result<Bool, TestFailure> = .Ok(true)\n        return expected\n    }\n}\n\nTest FlagAdapterDescribesEnabled {\n    test {\n        return describeEnabled()\n    }\n\n    expect {\n        let expected: Result<String, TestFailure> = .Ok(\"on\")\n        return expected\n    }\n}\n",
+  "projectDir": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-strict\\20260808T222637Z-ijwwwz\\iteration-001\\fictional-library-adapter\\project",
+  "testSummary": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "total": 2
+  }
+}

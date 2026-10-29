@@ -1,0 +1,63 @@
+{
+  "caseId": "focus-planner",
+  "title": "Focus planner with enums, structs, arrays, and scalar tests",
+  "iteration": 1,
+  "attempt": 1,
+  "passed": false,
+  "commands": [
+    {
+      "command": [
+        "kira",
+        "check",
+        "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-fixed\\20260808T221729Z-n9zkzr\\iteration-001\\focus-planner\\project"
+      ],
+      "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-fixed\\20260808T221729Z-n9zkzr\\iteration-001\\focus-planner\\project",
+      "exitCode": 0,
+      "timedOut": false,
+      "stdout": "ok: C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-fixed\\20260808T221729Z-n9zkzr\\iteration-001\\focus-planner\\project\n",
+      "stderr": "",
+      "durationMs": 202
+    },
+    {
+      "command": [
+        "kira",
+        "test"
+      ],
+      "cwd": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-fixed\\20260808T221729Z-n9zkzr\\iteration-001\\focus-planner\\project",
+      "exitCode": 0,
+      "timedOut": false,
+      "stdout": "ok   FocusClampsLowEnergy\nok   FocusClampsHighEnergy\nok   FocusCountsPartialPomodoro\nFAIL FocusUsesMoodThresholds\nok   FocusScoresPlan\n4 passed, 1 failed, 0 skipped, 5 total\n",
+      "stderr": "",
+      "durationMs": 205
+    }
+  ],
+  "response": {
+    "kira": "enum SessionMood {\n    DeepFocus\n    Steady\n    Recharge\n}\n\nstruct FocusSession {\n    var title: String;\n    var minutes: Int;\n    var energy: Int;\n}\n\nfunction clampEnergy(value: Int) -> Int {\n    var result: Int = value;\n    if result < 0 {\n        result = 0;\n    }\n    if result > 10 {\n        result = 10;\n    }\n    return result;\n}\n\nfunction focusScore(minutes: Int, energy: Int) -> Int {\n    return minutes * clampEnergy(energy);\n}\n\nfunction pomodoroCount(minutes: Int) -> Int {\n    var remaining: Int = minutes;\n    var count: Int = 0;\n    while remaining > 0 {\n        count = count + 1;\n        remaining = remaining - 25;\n    }\n    return count;\n}\n\nfunction moodFor(score: Int) -> SessionMood {\n    if score >= 300 {\n        return SessionMood.DeepFocus;\n    }\n    if score >= 120 {\n        return SessionMood.Steady;\n    }\n    return SessionMood.Recharge;\n}\n\nfunction moodLabel(mood: SessionMood) -> String {\n    var label: String = \"\";\n    match mood {\n        DeepFocus -> {\n            label = \"Deep Focus\";\n        }\n        Steady -> {\n            label = \"Steady\";\n        }\n        Recharge -> {\n            label = \"Recharge\";\n        }\n    }\n    return label;\n}\n\nfunction planScore(sessions: borrow [FocusSession]) -> Int {\n    var total: Int = 0;\n    var index: Int = 0;\n    while index < sessions.count {\n        total = total + focusScore(sessions[index].minutes, sessions[index].energy);\n        index = index + 1;\n    }\n    return total;\n}\n\n@Main\nfunction main() {\n    return;\n}"
+  },
+  "source": "enum SessionMood {\n    DeepFocus\n    Steady\n    Recharge\n}\n\nstruct FocusSession {\n    var title: String;\n    var minutes: Int;\n    var energy: Int;\n}\n\nfunction clampEnergy(value: Int) -> Int {\n    var result: Int = value;\n    if result < 0 {\n        result = 0;\n    }\n    if result > 10 {\n        result = 10;\n    }\n    return result;\n}\n\nfunction focusScore(minutes: Int, energy: Int) -> Int {\n    return minutes * clampEnergy(energy);\n}\n\nfunction pomodoroCount(minutes: Int) -> Int {\n    var remaining: Int = minutes;\n    var count: Int = 0;\n    while remaining > 0 {\n        count = count + 1;\n        remaining = remaining - 25;\n    }\n    return count;\n}\n\nfunction moodFor(score: Int) -> SessionMood {\n    if score >= 300 {\n        return SessionMood.DeepFocus;\n    }\n    if score >= 120 {\n        return SessionMood.Steady;\n    }\n    return SessionMood.Recharge;\n}\n\nfunction moodLabel(mood: SessionMood) -> String {\n    var label: String = \"\";\n    match mood {\n        DeepFocus -> {\n            label = \"Deep Focus\";\n        }\n        Steady -> {\n            label = \"Steady\";\n        }\n        Recharge -> {\n            label = \"Recharge\";\n        }\n    }\n    return label;\n}\n\nfunction planScore(sessions: borrow [FocusSession]) -> Int {\n    var total: Int = 0;\n    var index: Int = 0;\n    while index < sessions.count {\n        total = total + focusScore(sessions[index].minutes, sessions[index].energy);\n        index = index + 1;\n    }\n    return total;\n}\n\n@Main\nfunction main() {\n    return;\n}",
+  "responseText": "enum SessionMood {\n    DeepFocus\n    Steady\n    Recharge\n}\n\nstruct FocusSession {\n    var title: String;\n    var minutes: Int;\n    var energy: Int;\n}\n\nfunction clampEnergy(value: Int) -> Int {\n    var result: Int = value;\n    if result < 0 {\n        result = 0;\n    }\n    if result > 10 {\n        result = 10;\n    }\n    return result;\n}\n\nfunction focusScore(minutes: Int, energy: Int) -> Int {\n    return minutes * clampEnergy(energy);\n}\n\nfunction pomodoroCount(minutes: Int) -> Int {\n    var remaining: Int = minutes;\n    var count: Int = 0;\n    while remaining > 0 {\n        count = count + 1;\n        remaining = remaining - 25;\n    }\n    return count;\n}\n\nfunction moodFor(score: Int) -> SessionMood {\n    if score >= 300 {\n        return SessionMood.DeepFocus;\n    }\n    if score >= 120 {\n        return SessionMood.Steady;\n    }\n    return SessionMood.Recharge;\n}\n\nfunction moodLabel(mood: SessionMood) -> String {\n    var label: String = \"\";\n    match mood {\n        DeepFocus -> {\n            label = \"Deep Focus\";\n        }\n        Steady -> {\n            label = \"Steady\";\n        }\n        Recharge -> {\n            label = \"Recharge\";\n        }\n    }\n    return label;\n}\n\nfunction planScore(sessions: borrow [FocusSession]) -> Int {\n    var total: Int = 0;\n    var index: Int = 0;\n    while index < sessions.count {\n        total = total + focusScore(sessions[index].minutes, sessions[index].energy);\n        index = index + 1;\n    }\n    return total;\n}\n\n@Main\nfunction main() {\n    return;\n}",
+  "preparedSource": "import Foundation\n\nenum SessionMood {\n    DeepFocus\n    Steady\n    Recharge\n}\n\nstruct FocusSession {\n    var title: String;\n    var minutes: Int;\n    var energy: Int;\n}\n\nfunction clampEnergy(value: Int) -> Int {\n    var result: Int = value;\n    if result < 0 {\n        result = 0;\n    }\n    if result > 10 {\n        result = 10;\n    }\n    return result;\n}\n\nfunction focusScore(minutes: Int, energy: Int) -> Int {\n    return minutes * clampEnergy(energy);\n}\n\nfunction pomodoroCount(minutes: Int) -> Int {\n    var remaining: Int = minutes;\n    var count: Int = 0;\n    while remaining > 0 {\n        count = count + 1;\n        remaining = remaining - 25;\n    }\n    return count;\n}\n\nfunction moodFor(score: Int) -> SessionMood {\n    if score >= 300 {\n        return SessionMood.DeepFocus;\n    }\n    if score >= 120 {\n        return SessionMood.Steady;\n    }\n    return SessionMood.Recharge;\n}\n\nfunction moodLabel(mood: SessionMood) -> String {\n    var label: String = \"\";\n    match mood {\n        DeepFocus -> {\n            label = \"Deep Focus\";\n        }\n        Steady -> {\n            label = \"Steady\";\n        }\n        Recharge -> {\n            label = \"Recharge\";\n        }\n    }\n    return label;\n}\n\nfunction planScore(sessions: borrow [FocusSession]) -> Int {\n    var total: Int = 0;\n    var index: Int = 0;\n    while index < sessions.count {\n        total = total + focusScore(sessions[index].minutes, sessions[index].energy);\n        index = index + 1;\n    }\n    return total;\n}\n\n@Main\nfunction main() {\n    return;\n}\n\n// evaluator-hidden-tests\nTest FocusClampsLowEnergy {\n    test {\n        return clampEnergy(-2)\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(0)\n        return expected\n    }\n}\n\nTest FocusClampsHighEnergy {\n    test {\n        return clampEnergy(12)\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(10)\n        return expected\n    }\n}\n\nTest FocusCountsPartialPomodoro {\n    test {\n        return pomodoroCount(45)\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(2)\n        return expected\n    }\n}\n\nTest FocusUsesMoodThresholds {\n    test {\n        return moodLabel(moodFor(320))\n    }\n\n    expect {\n        let expected: Result<String, TestFailure> = .Ok(\"deep focus\")\n        return expected\n    }\n}\n\nTest FocusScoresPlan {\n    test {\n        let first = FocusSession { title: \"Compiler work\"; minutes: 25; energy: 8 }\n        let second = FocusSession { title: \"Docs\"; minutes: 20; energy: 4 }\n        var sessions: [FocusSession] = []\n        sessions.append(first)\n        sessions.append(second)\n        return planScore(sessions)\n    }\n\n    expect {\n        let expected: Result<Int, TestFailure> = .Ok(280)\n        return expected\n    }\n}\n",
+  "projectDir": "C:\\Users\\ipado\\Coding\\kira-projects\\kira-skill-bench\\runs-codex-fixed\\20260808T221729Z-n9zkzr\\iteration-001\\focus-planner\\project",
+  "testSummary": {
+    "passed": 4,
+    "failed": 1,
+    "skipped": 0,
+    "total": 5
+  },
+  "failure": {
+    "caseId": "focus-planner",
+    "title": "Focus planner with enums, structs, arrays, and scalar tests",
+    "iteration": 1,
+    "stage": "test",
+    "message": "kira test exited with 0\n\nstdout:\nok   FocusClampsLowEnergy\nok   FocusClampsHighEnergy\nok   FocusCountsPartialPomodoro\nFAIL FocusUsesMoodThresholds\nok   FocusScoresPlan\n4 passed, 1 failed, 0 skipped, 5 total\n\nKira test summary: 4 passed, 1 failed, 0 skipped, 5 total.",
+    "command": [
+      "kira",
+      "test"
+    ],
+    "exitCode": 0,
+    "timedOut": false,
+    "stdout": "ok   FocusClampsLowEnergy\nok   FocusClampsHighEnergy\nok   FocusCountsPartialPomodoro\nFAIL FocusUsesMoodThresholds\nok   FocusScoresPlan\n4 passed, 1 failed, 0 skipped, 5 total\n",
+    "stderr": "",
+    "generatedSource": "enum SessionMood {\n    DeepFocus\n    Steady\n    Recharge\n}\n\nstruct FocusSession {\n    var title: String;\n    var minutes: Int;\n    var energy: Int;\n}\n\nfunction clampEnergy(value: Int) -> Int {\n    var result: Int = value;\n    if result < 0 {\n        result = 0;\n    }\n    if result > 10 {\n        result = 10;\n    }\n    return result;\n}\n\nfunction focusScore(minutes: Int, energy: Int) -> Int {\n    return minutes * clampEnergy(energy);\n}\n\nfunction pomodoroCount(minutes: Int) -> Int {\n    var remaining: Int = minutes;\n    var count: Int = 0;\n    while remaining > 0 {\n        count = count + 1;\n        remaining = remaining - 25;\n    }\n    return count;\n}\n\nfunction moodFor(score: Int) -> SessionMood {\n    if score >= 300 {\n        return SessionMood.DeepFocus;\n    }\n    if score >= 120 {\n        return SessionMood.Steady;\n    }\n    return SessionMood.Recharge;\n}\n\nfunction moodLabel(mood: SessionMood) -> String {\n    var label: String = \"\";\n    match mood {\n        DeepFocus -> {\n            label = \"Deep Focus\";\n        }\n        Steady -> {\n            label = \"Steady\";\n        }\n        Recharge -> {\n            label = \"Recharge\";\n        }\n    }\n    return label;\n}\n\nfunction planScore(sessions: borrow [FocusSession]) -> Int {\n    var total: Int = 0;\n    var index: Int = 0;\n    while index < sessions.count {\n        total = total + focusScore(sessions[index].minutes, sessions[index].energy);\n        index = index + 1;\n    }\n    return total;\n}\n\n@Main\nfunction main() {\n    return;\n}"
+  }
+}

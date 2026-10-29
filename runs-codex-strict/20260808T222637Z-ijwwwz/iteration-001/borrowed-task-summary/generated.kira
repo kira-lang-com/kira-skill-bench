@@ -1,0 +1,32 @@
+struct FocusTask {
+    let minutes: Int;
+    let weight: Int;
+}
+
+function weightedMinutes(tasks: borrow [FocusTask]) -> Int {
+    var total: Int = 0;
+    for task in tasks {
+        total = total + task.minutes * task.weight
+    }
+    return total
+}
+
+function longTaskCount(tasks: borrow [FocusTask], threshold: Int) -> Int {
+    var count: Int = 0;
+    for task in tasks {
+        if task.minutes >= threshold {
+            count = count + 1
+        }
+    }
+    return count
+}
+
+@Main function main() {
+    let tasks: [FocusTask] = [
+        FocusTask { minutes: 25, weight: 2 },
+        FocusTask { minutes: 50, weight: 1 }
+    ];
+    print(weightedMinutes(tasks));
+    print(longTaskCount(tasks, 30));
+    return
+}

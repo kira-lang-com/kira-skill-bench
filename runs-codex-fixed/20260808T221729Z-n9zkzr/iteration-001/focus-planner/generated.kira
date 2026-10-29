@@ -1,0 +1,77 @@
+enum SessionMood {
+    DeepFocus
+    Steady
+    Recharge
+}
+
+struct FocusSession {
+    var title: String;
+    var minutes: Int;
+    var energy: Int;
+}
+
+function clampEnergy(value: Int) -> Int {
+    var result: Int = value;
+    if result < 0 {
+        result = 0;
+    }
+    if result > 10 {
+        result = 10;
+    }
+    return result;
+}
+
+function focusScore(minutes: Int, energy: Int) -> Int {
+    return minutes * clampEnergy(energy);
+}
+
+function pomodoroCount(minutes: Int) -> Int {
+    var remaining: Int = minutes;
+    var count: Int = 0;
+    while remaining > 0 {
+        count = count + 1;
+        remaining = remaining - 25;
+    }
+    return count;
+}
+
+function moodFor(score: Int) -> SessionMood {
+    if score >= 300 {
+        return SessionMood.DeepFocus;
+    }
+    if score >= 120 {
+        return SessionMood.Steady;
+    }
+    return SessionMood.Recharge;
+}
+
+function moodLabel(mood: SessionMood) -> String {
+    var label: String = "";
+    match mood {
+        DeepFocus -> {
+            label = "Deep Focus";
+        }
+        Steady -> {
+            label = "Steady";
+        }
+        Recharge -> {
+            label = "Recharge";
+        }
+    }
+    return label;
+}
+
+function planScore(sessions: borrow [FocusSession]) -> Int {
+    var total: Int = 0;
+    var index: Int = 0;
+    while index < sessions.count {
+        total = total + focusScore(sessions[index].minutes, sessions[index].energy);
+        index = index + 1;
+    }
+    return total;
+}
+
+@Main
+function main() {
+    return;
+}

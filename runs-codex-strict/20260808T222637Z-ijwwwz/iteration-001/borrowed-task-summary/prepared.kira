@@ -1,0 +1,68 @@
+import Foundation
+
+struct FocusTask {
+    let minutes: Int;
+    let weight: Int;
+}
+
+function weightedMinutes(tasks: borrow [FocusTask]) -> Int {
+    var total: Int = 0;
+    for task in tasks {
+        total = total + task.minutes * task.weight
+    }
+    return total
+}
+
+function longTaskCount(tasks: borrow [FocusTask], threshold: Int) -> Int {
+    var count: Int = 0;
+    for task in tasks {
+        if task.minutes >= threshold {
+            count = count + 1
+        }
+    }
+    return count
+}
+
+@Main function main() {
+    let tasks: [FocusTask] = [
+        FocusTask { minutes: 25, weight: 2 },
+        FocusTask { minutes: 50, weight: 1 }
+    ];
+    print(weightedMinutes(tasks));
+    print(longTaskCount(tasks, 30));
+    return
+}
+
+// evaluator-hidden-tests
+Test BorrowedTaskWeightedTotal {
+    test {
+        let first = FocusTask { minutes: 25; weight: 2 }
+        let second = FocusTask { minutes: 40; weight: 1 }
+        var tasks: [FocusTask] = []
+        tasks.append(first)
+        tasks.append(second)
+        return weightedMinutes(tasks)
+    }
+
+    expect {
+        let expected: Result<Int, TestFailure> = .Ok(90)
+        return expected
+    }
+}
+
+Test BorrowedTaskArrayCanBeReadAgain {
+    test {
+        let first = FocusTask { minutes: 25; weight: 2 }
+        let second = FocusTask { minutes: 40; weight: 1 }
+        var tasks: [FocusTask] = []
+        tasks.append(first)
+        tasks.append(second)
+        let total = weightedMinutes(tasks)
+        return longTaskCount(tasks, 30) + total
+    }
+
+    expect {
+        let expected: Result<Int, TestFailure> = .Ok(91)
+        return expected
+    }
+}

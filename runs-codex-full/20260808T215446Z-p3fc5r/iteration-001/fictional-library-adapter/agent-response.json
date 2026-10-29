@@ -1,0 +1,3 @@
+{
+  "kira": "import FlagKit\n\nfunction enabledFlag() -> Bool {\n    return makeFlagKit().read(\"enabled\")\n}\n\nfunction describeEnabled() -> String {\n    if enabledFlag() {\n        return \"on\"\n    } else {\n        return \"off\"\n    }\n}\n\n@Main\nfunction main() {\n    print(describeEnabled())\n    return\n}"
+}

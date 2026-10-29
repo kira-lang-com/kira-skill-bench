@@ -1,0 +1,52 @@
+{
+  "runId": "20260808T215446Z-p3fc5r",
+  "mode": "pending",
+  "skillPath": "C:\\Users\\ipado\\Downloads\\working-with-kira\\working-with-kira\\SKILL.md",
+  "skillHash": "8448665bdd494eb8b6925584d076cb088be4d1836c47f664efd86e4fab8acb70",
+  "agent": "process:bun run adapters/codex-exec.ts",
+  "cases": [
+    {
+      "id": "focus-planner",
+      "title": "Focus planner with enums, structs, arrays, and scalar tests",
+      "tags": [
+        "core-syntax",
+        "enum",
+        "match",
+        "borrow",
+        "arrays"
+      ]
+    },
+    {
+      "id": "tool-orchestration",
+      "title": "Programmatic tool-call shape over a fictional KiraTools library",
+      "tags": [
+        "programmatic-tools",
+        "fictional-library",
+        "struct-methods",
+        "arrays"
+      ]
+    },
+    {
+      "id": "fictional-library-adapter",
+      "title": "A tiny adapter around a made-up FlagKit library",
+      "tags": [
+        "fictional-library",
+        "methods",
+        "if",
+        "bool"
+      ]
+    },
+    {
+      "id": "borrowed-task-summary",
+      "title": "Borrowed array traversal without moving the input",
+      "tags": [
+        "ownership",
+        "borrow",
+        "arrays",
+        "structs"
+      ]
+    }
+  ],
+  "maxIterations": 5,
+  "applySkill": false
+}
